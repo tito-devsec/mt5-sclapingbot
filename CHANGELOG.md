@@ -2,13 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version numbers will follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once releases begin.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html); 0.x releases are pre-alpha research releases.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-29
+
+First public research release (pre-alpha). Research, data collection, simulation and observe-only monitoring only: **no order execution exists**. Python components are tested offline and in CI (Windows and Ubuntu); the MQL5 components are statically checked but not yet compiled in MetaEditor, and nothing has yet been verified against a live MT5 terminal.
+
 ### Added
 
-- `README.md` documenting the project goal, its pre-implementation status, the planned architecture, and risk disclosures.
+- Project documentation, policies and README.
 - `CONTRIBUTING.md`, `SECURITY.md`, and `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1, reporting through GitHub private reporting).
 - `.gitignore` for Python environments, secrets, local databases, logs, market data, and model artifacts.
 - GitHub issue templates and a pull request template.
@@ -16,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `docs/IMPLEMENTATION_PLAN.md` with the proposed phased build plan.
 - `mt5bot` Python package (Python 3.12) implementing plan Phases 0-19, tested offline:
   - read-only MT5 gateway (allow-list proxy), demo/USD account guard, broker symbol resolution, DST-aware server clock;
-  - SQLite storage with three versioned migrations, automatic pre-upgrade backup and repository classes;
+  - SQLite storage with four versioned migrations, automatic pre-upgrade backup and repository classes;
   - checkpointed, idempotent bar collection with data-quality checks (closed candles only, no filling);
   - 44-feature causal feature pipeline with generated reference (`docs/FEATURES.md`);
   - rule-based regimes with out-of-distribution handling, Gaussian HMM and change-point audit (research);
@@ -31,11 +35,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - optional, disabled-by-default LLM research adapter with schema validation and cost cap;
   - decision memory with counterfactual candidate outcomes and rule-based attribution; drift detection;
   - observe-only demo monitor, `mt5bot` CLI, HTML/CSV reports.
-- 248 automated tests, including safety tests that forbid order-execution APIs.
+- 283 automated tests, including safety tests that forbid order-execution APIs in Python and MQL5.
 - CI workflow (least privilege, pinned actions), Dependabot, CODEOWNERS, `.env.example`, `requirements-lock.txt`.
 - Documentation: architecture, configuration reference (generated), features (generated), ML, backtesting, risk,
   news providers, troubleshooting and optional VPS deployment.
-
 - MetaTrader 5 integration:
   - MQL5 chart indicator showing decisions, stop-loss and take-profit lines and tick verdicts;
   - demo-only, observe-only observer EA recording every tick and resolving stop vs. target first touch live;
@@ -49,3 +52,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Security
 
 - Secrets are `SecretStr` values redacted from logs and errors; `config/local.toml`, `reports/` and backups are git-ignored.
+
+[Unreleased]: https://github.com/tito-devsec/mt5-sclapingbot/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/tito-devsec/mt5-sclapingbot/releases/tag/v0.1.0

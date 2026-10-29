@@ -46,6 +46,15 @@ def _gateway(settings: Settings) -> Any:
     return MT5Gateway(settings.mt5, _clock(settings))
 
 
+def _version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("mt5-sclapingbot")
+    except PackageNotFoundError:
+        return "unknown"
+
+
 def _print(obj: Any) -> None:
     print(json.dumps(obj, indent=2, default=str))
 
@@ -548,6 +557,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="mt5bot", description="Research, data and observe-only monitoring for MT5. This tool never places orders."
     )
+    p.add_argument("--version", action="version", version=f"mt5bot {_version()}")
     sub = p.add_subparsers(dest="command", required=True)
 
     def period(sp: argparse.ArgumentParser) -> None:
