@@ -1,6 +1,6 @@
 # Implementation Plan
 
-**Status:** Proposed, version 2. Nothing in this plan is implemented yet. There are no delivery dates.
+**Status:** Version 2. Phases 0-19 are implemented and tested offline (see the README feature table for exact status); Phase 20 and every live verification step still need your Windows PC. There are no delivery dates.
 
 This plan covers the full system, from an empty repository to a demo-monitored research system:
 
@@ -81,7 +81,7 @@ Two other libraries were considered and deliberately excluded:
 - `polars`: a second data-frame library would duplicate pandas logic for no clear gain.
 - `TA-Lib` and `pandas-ta`: indicators are implemented in-house and tested against independent fixtures. This avoids a native binary dependency.
 
-The rest of the stack: `pydantic` and `pydantic-settings` (configuration), `typer` (CLI), `httpx` (news HTTP, with timeouts and retries), `defusedxml` and `feedparser` (safe RSS parsing), and `ruff`, `mypy`, `pytest` and `hypothesis` (quality and property-based tests).
+The rest of the stack: `pydantic` and `pydantic-settings` (configuration), `argparse` (CLI), `httpx` (news HTTP, with timeouts and retries), `defusedxml` and `feedparser` (safe RSS parsing), and `ruff`, `mypy`, `pytest` and `hypothesis` (quality and property-based tests).
 
 `pip install -e ".[all]"` installs everything. `pip install -e .` gives a working rule-based and scikit-learn system.
 

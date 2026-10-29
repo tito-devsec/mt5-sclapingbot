@@ -3,7 +3,7 @@
 Thank you for your interest. This document explains how to propose changes. Submitting a contribution does not guarantee that it will be accepted. Every change is reviewed by the maintainer, [@tito-devsec](https://github.com/tito-devsec).
 
 > [!NOTE]
-> The project is at the **pre-implementation** stage. Tooling sections below (formatter, linter, test runner) describe the **intended** standards. They will be finalized when the first code lands.
+> Run the same checks as CI before opening a pull request: `ruff check src tests`, `ruff format --check src tests`, `mypy src` and `python -m pytest -q`.
 
 ## Project purpose
 
@@ -49,9 +49,10 @@ Use the **Feature request** issue template. Explain the problem it solves and ho
    10. Respect the project's [MIT License](LICENSE). By submitting a contribution, you agree that it is licensed under the MIT License.
 5. Expect review comments, and respond to them in the PR thread.
 
-## Coding standards (intended)
+## Coding standards
 
-- **Python style:** PEP 8. Use an automatic formatter and linter (planned: `ruff`). The exact configuration will live in the project manifest.
+- **Python style:** PEP 8, enforced by `ruff` (lint and format, 120-character lines) as configured in `pyproject.toml`.
+- **Comments:** single-line comments and single-line docstrings only. Put longer explanations in `docs/`.
 - **Type annotations:** required on public functions and module boundaries.
 - **SQL:** parameterized queries only, never string-formatted SQL.
 - **No hidden network calls or telemetry.**
