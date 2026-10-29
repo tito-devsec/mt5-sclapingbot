@@ -18,7 +18,7 @@ def test_migration_idempotent_and_preserves_data(tmp_path):
     c.close()
     c2 = connect(path)
     assert migrate(c2, path) == []  # nothing pending
-    assert current_version(c2) == 3
+    assert current_version(c2) == 4
     assert len(BarRepository(c2).load("EURUSD", Timeframe.M1)) == 50
 
 

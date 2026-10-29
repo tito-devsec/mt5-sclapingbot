@@ -8,6 +8,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from mt5bot.evaluation.stats import ljung_box_pvalue
+
 
 def max_drawdown(equity: np.ndarray) -> float:
     if len(equity) == 0:
@@ -42,9 +44,13 @@ def trade_metrics(trades: pd.DataFrame, reference_balance_usd: float | None = No
         # Per-trade Sharpe: mean/std of net R per trade. Not annualised; trades are not equally spaced.
         "sharpe_per_trade": float(r.mean() / r.std(ddof=1)) if n > 1 and r.std(ddof=1) > 0 else 0.0,
         "avg_hold_minutes": float(hold.mean()),
+        "ljung_box_pvalue": ljung_box_pvalue(r),
         "total_cost_usd": float(trades["cost_usd"].sum()),
         "cost_share_of_gross_abs": float(trades["cost_usd"].sum() / max(trades["gross_pnl_usd"].abs().sum(), 1e-12)),
         "exit_reasons": trades["exit_reason"].value_counts().to_dict(),
+        "ambiguous_exits": int(trades["ambiguous"].sum()) if "ambiguous" in trades else 0,
+        "tick_resolved_exits": int(trades["resolution"].str.startswith("TICKS").sum()) if "resolution" in trades else 0,
+        "tick_resolved_to_target": int((trades["resolution"] == "TICKS_TARGET").sum()) if "resolution" in trades else 0,
     }
     if reference_balance_usd:
         out["return_on_reference_pct"] = float(100 * pnl.sum() / reference_balance_usd)

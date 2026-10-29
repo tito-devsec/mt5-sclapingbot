@@ -13,6 +13,7 @@ import pandas as pd
 
 from mt5bot.backtest.engine import run_backtest
 from mt5bot.backtest.metrics import breakdown, trade_metrics
+from mt5bot.backtest.ticks import quotes_resolver
 from mt5bot.config.settings import Settings
 from mt5bot.core.types import Timeframe
 from mt5bot.features.pipeline import feature_names, feature_set_hash
@@ -213,6 +214,7 @@ def backtest_job(
     start: datetime | None,
     end: datetime,
     strategies: list[str] | None = None,
+    tick_resolve: bool = False,
 ) -> dict[str, Any]:
     pipe = ResearchPipeline(conn, settings)
     feats = pipe.feature_frame(symbol, tf, start, end)
@@ -234,6 +236,7 @@ def backtest_job(
         "timeframe": tf.value,
         "provenance": "SIMULATED",
         "unverified_spec": symbol in pipe.specs.unverified,
+        "tick_resolved": tick_resolve,
         "runs": {},
     }
     s = pd.Timestamp(start) if start else feats["time_utc"].iloc[0]
@@ -246,6 +249,7 @@ def backtest_job(
             cost_model(settings, symbol, m),
             sizing(settings),
             max_concurrent=settings.risk.max_open_positions,
+            resolver_for=(lambda direction: quotes_resolver(conn, symbol, direction)) if tick_resolve else None,
         )
         metrics = trade_metrics(res.trades, settings.risk.reference_balance_usd)
         metrics["skipped"] = res.skipped

@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 
 from mt5bot.backtest.simulator import BarArrays, CostModel, Sizing, simulate_trade
+from mt5bot.backtest.ticks import decision_resolver, quotes_resolver
 from mt5bot.config.settings import SelectionSettings
 from mt5bot.core.types import Direction, InstrumentSpec, Timeframe
 from mt5bot.features.pipeline import FeatureConfig, build_features
@@ -54,6 +55,8 @@ def _attribute(
         "mae_r": r.mae_r,
         "bars_held": r.bars_held,
         "attribution_version": ATTRIBUTION_VERSION,
+        "ambiguous_bar": r.ambiguous,
+        "resolution": r.resolution,
     }
     if d["status"] == "REJECTED":
         return ("INVALID_WIN" if r.net_r > 0 else "RISK_REJECTED"), ev
@@ -157,6 +160,7 @@ def evaluate_pending(
                 costs,
                 sizing,
                 strategy=c["strategy"],
+                resolver=quotes_resolver(conn, d["symbol"], Direction(c["direction"])),
             )
             if rc.status != "FILLED" or rc.exit_time is None:
                 continue
@@ -198,6 +202,9 @@ def evaluate_pending(
             costs,
             sizing,
             strategy=d["selected_strategy"],
+            resolver=decision_resolver(
+                conn, int(d["id"]), quotes_resolver(conn, d["symbol"], Direction(d["direction"]))
+            ),
         )
         if r.status != "FILLED":
             decisions.save_outcome(

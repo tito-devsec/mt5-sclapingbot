@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
+from mt5bot.bridge.service import sync
 from mt5bot.config.settings import Settings
 from mt5bot.core.errors import AccountValidationError, Mt5BotError
 from mt5bot.core.logging import log_event
@@ -19,6 +20,7 @@ from mt5bot.core.types import Timeframe, utc_now
 from mt5bot.drift.monitor import check_feed, persist, resolve
 from mt5bot.gateway.account import require_valid_account
 from mt5bot.gateway.base import MarketGateway
+from mt5bot.gateway.clock import ServerClock
 from mt5bot.ingest.collector import Collector
 from mt5bot.ingest.quality import is_weekend_gap
 from mt5bot.memory.outcomes import evaluate_pending
@@ -36,6 +38,8 @@ class MonitorStats:
     decisions: dict[str, int] = field(default_factory=dict)
     errors: int = 0
     stopped_reason: str = ""
+    bridge_files: int = 0
+    tick_resolutions: int = 0
 
 
 class DemoMonitor:
@@ -45,8 +49,10 @@ class DemoMonitor:
         conn: sqlite3.Connection,
         settings: Settings,
         sleep: Callable[[float], None] | None = None,
+        clock: ServerClock | None = None,
     ) -> None:
         self.gw = gateway
+        self.clock = clock
         self.conn = conn
         self.s = settings
         self.pipeline = ResearchPipeline(conn, settings)
@@ -96,6 +102,14 @@ class DemoMonitor:
             except Mt5BotError as exc:
                 stats.errors += 1
                 log_event(log, logging.ERROR, "monitor cycle failed", code=exc.code)
+            if self.clock is not None and self.s.bridge.enabled:
+                try:
+                    rep = sync(self.conn, self.s, self.clock, pd.Timestamp(now))
+                    stats.bridge_files = len(rep.files_written)
+                    stats.tick_resolutions += rep.resolutions_imported
+                except OSError as exc:  # a locked or missing exchange folder must not stop monitoring
+                    stats.errors += 1
+                    log_event(log, logging.WARNING, "bridge sync failed", error=type(exc).__name__)
             stats.cycles += 1
             if max_cycles is not None and stats.cycles >= max_cycles:
                 stats.stopped_reason = "max cycles reached"

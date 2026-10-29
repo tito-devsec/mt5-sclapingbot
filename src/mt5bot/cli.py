@@ -32,14 +32,18 @@ def _db(settings: Settings) -> Any:
     return open_database(settings.storage.db_path)
 
 
-def _gateway(settings: Settings) -> Any:
+def _clock(settings: Settings) -> Any:
     from mt5bot.gateway.clock import ServerClock
+
+    if settings.mt5.server_timezone or settings.mt5.server_utc_offset_hours is not None:
+        return ServerClock(settings.mt5.server_timezone, settings.mt5.server_utc_offset_hours)
+    return None
+
+
+def _gateway(settings: Settings) -> Any:
     from mt5bot.gateway.mt5_gateway import MT5Gateway
 
-    clock = None
-    if settings.mt5.server_timezone or settings.mt5.server_utc_offset_hours is not None:
-        clock = ServerClock(settings.mt5.server_timezone, settings.mt5.server_utc_offset_hours)
-    return MT5Gateway(settings.mt5, clock)
+    return MT5Gateway(settings.mt5, _clock(settings))
 
 
 def _print(obj: Any) -> None:
@@ -224,6 +228,7 @@ def cmd_backtest(s: Settings, a: argparse.Namespace) -> int:
         _ts(a.start),
         _ts(a.end) or utc_now(),
         a.strategies.split(",") if a.strategies else None,
+        tick_resolve=a.tick_resolve,
     )
     if "error" in out:
         print(out["error"])
@@ -237,8 +242,12 @@ def cmd_backtest(s: Settings, a: argparse.Namespace) -> int:
             continue
         print(
             f"  {k:5} trades={r['trades']:5} net_r={r['net_r']:8.2f} expectancy_r={r['expectancy_r']:7.3f} "
-            f"win_rate={r['win_rate']:.2f} pf={r['profit_factor']:.2f} max_dd_r={r['max_drawdown_r']:.2f}"
+            f"win_rate={r['win_rate']:.2f} pf={r['profit_factor']:.2f} max_dd_r={r['max_drawdown_r']:.2f} "
+            f"ambiguous={r['ambiguous_exits']} tick_resolved={r['tick_resolved_exits']} "
+            f"(to_target={r['tick_resolved_to_target']})"
         )
+    if not out["tick_resolved"]:
+        print("bars touching both stop and target were counted as stop-first; use --tick-resolve with stored ticks")
     print("NOTE: historical simulation only; not evidence of future profitability.")
     if a.json:
         _print(out)
@@ -408,14 +417,68 @@ def cmd_monitor(s: Settings, a: argparse.Namespace) -> int:
     gw = _gateway(s)
     gw.connect()
     try:
-        mon = DemoMonitor(gw, _db(s), s)
+        clock = _clock(s)
+        if clock is None:
+            print("note: server time zone not set, so the MT5 chart bridge is off (set mt5.server_timezone)")
+        mon = DemoMonitor(gw, _db(s), s, clock=clock)
         mon.install_signal_handlers()
         print("observe-only monitor started (Ctrl+C to stop). No orders are ever sent.")
         stats = mon.run(max_cycles=a.cycles)
     finally:
         gw.disconnect()
-    print(f"stopped: {stats.stopped_reason}; cycles={stats.cycles} decisions={stats.decisions} errors={stats.errors}")
+    print(
+        f"stopped: {stats.stopped_reason}; cycles={stats.cycles} decisions={stats.decisions} errors={stats.errors} "
+        f"bridge_files={stats.bridge_files} tick_resolutions={stats.tick_resolutions}"
+    )
     return EXIT_OK if "account validation failed" not in stats.stopped_reason else EXIT_VALIDATION
+
+
+def cmd_bridge(s: Settings, a: argparse.Namespace) -> int:
+    from mt5bot.bridge.files import bridge_dir
+    from mt5bot.bridge.service import export_state, import_results
+
+    d = bridge_dir(s.bridge)
+    if a.action == "path":
+        print(d if d else "unknown: set bridge.directory (APPDATA is not available on this system)")
+        return EXIT_OK if d else EXIT_VALIDATION
+    clock = _clock(s)
+    if clock is None:
+        print("set mt5.server_timezone first: chart times are broker server times")
+        return EXIT_VALIDATION
+    conn = _db(s)
+    if a.action == "export":
+        rep = export_state(conn, s, clock, pd.Timestamp(utc_now()), mode=a.mode)
+        print(f"{rep.note or 'exported'}: {len(rep.files_written)} file(s) in {rep.directory}")
+    else:
+        rep = import_results(conn, s, clock)
+        print(f"{rep.note or 'imported'}: tick resolutions={rep.resolutions_imported} ticks={rep.ticks_imported}")
+        for sym, hb in rep.heartbeats.items():
+            print(f"  EA heartbeat {sym}: {hb}")
+    return EXIT_OK
+
+
+def cmd_ticks(s: Settings, a: argparse.Namespace) -> int:
+    from mt5bot.gateway.account import require_valid_account
+    from mt5bot.pipeline.ticks_job import collect_ambiguous_ticks, collect_ticks
+
+    gw = _gateway(s)
+    gw.connect()
+    try:
+        require_valid_account(gw.account(), s.mt5.expected_currency)
+        conn = _db(s)
+        end = _ts(a.end) or utc_now()
+        if a.action == "collect":
+            start = _ts(a.start)
+            if start is None:
+                print("ticks collect needs --from")
+                return EXIT_VALIDATION
+            rep = collect_ticks(gw, conn, s, a.symbol, start, end)
+        else:
+            rep = collect_ambiguous_ticks(gw, conn, s, a.symbol, Timeframe(a.timeframe), _ts(a.start), end)
+    finally:
+        gw.disconnect()
+    print(f"windows={rep.windows} ticks_inserted={rep.ticks_inserted} ambiguous_trades={rep.ambiguous_trades}")
+    return EXIT_OK
 
 
 def cmd_llm_explain(s: Settings, a: argparse.Namespace) -> int:
@@ -501,8 +564,19 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--timeframe", required=True)
     b.add_argument("--strategies")
     b.add_argument("--json", action="store_true")
+    b.add_argument("--tick-resolve", action="store_true", help="settle bars that hit both stop and target from ticks")
     period(b)
     b.set_defaults(fn=cmd_backtest)
+    br = sub.add_parser("bridge", help="file exchange with the MQL5 indicator and observer EA")
+    br.add_argument("action", choices=["path", "export", "import"])
+    br.add_argument("--mode", default="SIMULATED", choices=["SIMULATED", "HISTORICAL", "OBSERVED_DEMO"])
+    br.set_defaults(fn=cmd_bridge)
+    tk = sub.add_parser("ticks", help="collect ticks through the Python MT5 API")
+    tk.add_argument("action", choices=["collect", "ambiguous"])
+    tk.add_argument("--symbol", required=True)
+    tk.add_argument("--timeframe", default="M1")
+    period(tk)
+    tk.set_defaults(fn=cmd_ticks)
     r = sub.add_parser("replay", help="replay the decision pipeline over history (HISTORICAL records)")
     r.add_argument("--symbol", required=True)
     r.add_argument("--timeframe", required=True)

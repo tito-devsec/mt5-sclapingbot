@@ -92,6 +92,8 @@ def test_upgrade_existing_database_preserves_data(tmp_path):
         "EURUSD", Timeframe.M1, synthetic_bars(T0, 25), source="f", broker_symbol="EURUSD", run_id=None
     )
     # simulate a database created before migrations 0002 and 0003 existed
+    conn.execute("DROP TABLE tick_resolutions")
+    conn.execute("DROP INDEX ix_quotes_time")
     conn.execute("DROP TABLE candidate_outcomes")
     conn.execute("DROP TABLE instrument_specs")
     conn.execute("DELETE FROM schema_version WHERE version > 1")
@@ -110,7 +112,7 @@ def test_upgrade_existing_database_preserves_data(tmp_path):
     conn.row_factory = sqlite3.Row
     assert current_version(conn) == 1
     applied = migrate(conn, path)
-    assert applied == ["0002_instrument_specs.sql", "0003_candidate_outcomes.sql"]
-    assert current_version(conn) == 3
+    assert applied == ["0002_instrument_specs.sql", "0003_candidate_outcomes.sql", "0004_tick_resolutions.sql"]
+    assert current_version(conn) == 4
     assert conn.execute("SELECT COUNT(*) FROM bars").fetchone()[0] == 25
     assert list(tmp_path.glob("old.pre-v0002-*.bak")), "a backup is taken before upgrading"

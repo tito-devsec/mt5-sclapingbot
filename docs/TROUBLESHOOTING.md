@@ -18,4 +18,9 @@
 | `pip install` fails on a library | Unsupported Python version | Use Python 3.12 (`py -3.12 -m venv .venv`). |
 | `sqlite3.OperationalError: database is locked` | Two long-running writers at once | Run one `monitor` per database. Short commands can run alongside it, because WAL mode is enabled. |
 | `PermissionError` on `data/` | The working folder is not writable | Run from a folder you own, or set `storage.db_path`. |
-| MQL5 compile errors | Not applicable | This project has no MQL5 code yet. |
+| MQL5 compile error `can't open "MT5Bot/Bridge.mqh"` | The include was not copied | Copy `mql5\Include\MT5Bot` to `MQL5\Include\MT5Bot` in the terminal's data folder (File → Open Data Folder). |
+| Other MQL5 compile errors | The MQL5 code has not been compiled in this environment | Send the MetaEditor message (file, line, text) so it can be fixed. |
+| Observer EA removed with "DEMO accounts only" | The terminal is not on a demo account | Log in to the JustMarkets demo account. This guard is intentional. |
+| Indicator shows "no decision file yet" | Python has not exported, the chart timeframe is not M1/M5/M15/H1, or the folders differ | Run `mt5bot bridge export` and check `mt5bot bridge path`. The file names use the broker symbol, such as `EURUSD.m`. |
+| Panel says STALE | The Python monitor is not running, or the time zone is unset | Start `mt5bot monitor start` and set `mt5.server_timezone`. |
+| `first_hit=LATE` in results | The EA started after the decision's entry time | Expected. Keep the EA running continuously on one chart per symbol. |

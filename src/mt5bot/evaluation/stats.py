@@ -68,3 +68,13 @@ def wilson_interval(wins: int, n: int, z: float = 1.96) -> tuple[float, float]:
     centre = (p + z**2 / (2 * n)) / denom
     half = z * math.sqrt(p * (1 - p) / n + z**2 / (4 * n * n)) / denom
     return (centre - half, centre + half)
+
+
+def ljung_box_pvalue(x: np.ndarray, lags: int = 5) -> float:
+    """Ljung-Box p-value for autocorrelation in trade results (low values mean trades are not independent)."""
+    from statsmodels.stats.diagnostic import acorr_ljungbox
+
+    x = np.asarray(x, float)
+    if len(x) < lags * 4 or np.std(x) == 0:
+        return math.nan
+    return float(acorr_ljungbox(x, lags=[lags], return_df=True)["lb_pvalue"].iloc[0])

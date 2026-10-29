@@ -14,7 +14,7 @@ from sklearn.metrics import brier_score_loss, log_loss, roc_auc_score
 
 from mt5bot.backtest.metrics import max_drawdown
 from mt5bot.evaluation.splits import _purge, train_val_test, walk_forward
-from mt5bot.evaluation.stats import block_bootstrap_ci, deflated_sharpe, probabilistic_sharpe
+from mt5bot.evaluation.stats import block_bootstrap_ci, deflated_sharpe, ljung_box_pvalue, probabilistic_sharpe
 from mt5bot.ml.dataset import MetaDataset
 from mt5bot.ml.models import make_model
 
@@ -128,6 +128,7 @@ def selection_metrics(
         "max_drawdown_r": max_drawdown(np.cumsum(r)),
         "psr": probabilistic_sharpe(r),
         "deflated_sharpe_prob": deflated_sharpe(r, n_trials),
+        "ljung_box_pvalue": ljung_box_pvalue(r),
     }
 
 

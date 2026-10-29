@@ -7,6 +7,8 @@ All backtest output is **SIMULATED**. A good backtest is necessary but never suf
 ```powershell
 mt5bot backtest --symbol EURUSD --timeframe M1 --from 2024-01-01 --to 2025-01-01
 mt5bot backtest --symbol XAUUSD --timeframe M5 --strategies breakout --json
+mt5bot ticks ambiguous --symbol EURUSD --timeframe M1     # fetch ticks only for bars that hit both levels
+mt5bot backtest --symbol EURUSD --timeframe M1 --tick-resolve
 ```
 
 Each run is repeated for every cost multiplier in `evaluation.cost_multipliers` (default ×0.5, ×1, ×1.5, ×2, ×3). Every run and every simulated trade is stored in the `backtest_runs` and `simulated_trades` tables.
@@ -20,7 +22,7 @@ Each run is repeated for every cost multiplier in `evaluation.cost_multipliers` 
 | Prices | MT5 bars are bid prices, and ask = bid + bar spread. Longs buy at the ask and sell at the bid. Shorts sell at the bid and buy back at the ask. |
 | Slippage | `costs.slippage_points` is applied adversely on both entry and exit. |
 | Levels | Stop and target are anchored to the actual entry fill, not to the signal price. |
-| Intrabar ambiguity | If one bar touches both stop and target, the **stop** is assumed first. Tick-level resolution is not implemented. |
+| Intrabar ambiguity | If one bar touches both stop and target, real ticks decide which came first when they are available. Sources: the MQL5 observer EA, stored ticks, or `--tick-resolve` with ticks from `mt5bot ticks ambiguous`. Without ticks the **stop** is assumed first, and the trade is flagged `ASSUMED_STOP`. See [MT5_INTEGRATION.md](MT5_INTEGRATION.md). |
 | Gap through stop | A bar that opens beyond the stop exits at that open (`STOP_GAP`), which is worse than the planned 1R. |
 | Time exit | At the close of the last allowed bar (`strategy.max_hold_minutes`). |
 | Commission | `costs.commission_per_lot_per_side_usd` × 2 × lots. |
@@ -45,7 +47,7 @@ Metrics are not reported when a run has no trades.
 
 ## Known limitations
 
-- Bar data cannot resolve the order of events inside a bar, so the stop-first rule is a conservative assumption.
+- Without ticks, bar data cannot resolve the order of events inside a bar, so the stop-first rule is a conservative assumption. Every backtest prints how many exits were ambiguous and how many were settled by ticks.
 - A bar's spread is the value MT5 reports for that bar, which may differ from the spread at the exact fill moment.
 - Swap timing is approximate, and swap values default to 0 until you configure them from your broker's specification.
 - Non-USD crosses are not supported.

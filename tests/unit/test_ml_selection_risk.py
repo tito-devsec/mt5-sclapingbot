@@ -369,3 +369,77 @@ def test_usd_leg_direction():
     assert usd_leg_direction("EURUSD", Direction.LONG) == -1
     assert usd_leg_direction("USDJPY", Direction.LONG) == 1
     assert usd_leg_direction("XAUUSD", Direction.SHORT) == 1
+
+
+def test_ljung_box_detects_autocorrelation():
+    from mt5bot.evaluation.stats import ljung_box_pvalue
+
+    rng = np.random.default_rng(5)
+    assert ljung_box_pvalue(rng.normal(size=400)) > 0.01
+    ar = np.zeros(400)
+    for i in range(1, 400):
+        ar[i] = 0.8 * ar[i - 1] + rng.normal()
+    assert ljung_box_pvalue(ar) < 0.001
+
+
+def test_risk_engine_property_never_approves_limit_breaches():
+    """Property test (hypothesis): any approved candidate respects every configured limit."""
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    cfg = RiskSettings()
+    engine = RiskEngine(cfg)
+    spec = default_spec("EURUSD")
+
+    @settings(max_examples=300, deadline=None, derandomize=True)
+    @given(
+        stop=st.floats(0.00005, 0.01),
+        rr=st.floats(0.2, 5.0),
+        spread=st.floats(0, 120),
+        atr=st.floats(0.00002, 0.01),
+        vol=st.floats(0, 1),
+        cost=st.floats(0, 3),
+        unc=st.floats(0, 1),
+        daily=st.floats(-60, 20),
+        losses=st.integers(0, 10),
+        n_open=st.integers(0, 6),
+        long_=st.booleans(),
+    )
+    def check(stop, rr, spread, atr, vol, cost, unc, daily, losses, n_open, long_):
+        c = RiskCandidate(
+            symbol="EURUSD",
+            strategy="trend",
+            direction=Direction.LONG if long_ else Direction.SHORT,
+            stop_distance=stop,
+            target_distance=stop * rr,
+            price=1.1,
+            spread_points=spread,
+            atr=atr,
+            vol_pctile=vol,
+            est_cost_r=cost,
+            model_uncertainty=unc,
+            spec=spec,
+        )
+        ctx = RiskContext(
+            mode="SIMULATED",
+            daily_pnl_usd=daily,
+            consecutive_losses=losses,
+            open_positions=[("GBPUSD", "SHORT")] * n_open,
+        )
+        v = engine.evaluate(c, ctx)
+        if v.approved:
+            assert spread <= cfg.max_spread_points["*"]
+            assert spread * spec.point / atr <= cfg.max_spread_atr_ratio
+            assert cfg.vol_percentile_min <= vol <= cfg.vol_percentile_max
+            assert (rr - cost) / (1 + cost) >= cfg.min_reward_risk
+            assert unc <= cfg.max_model_uncertainty
+            assert -daily < cfg.reference_balance_usd * cfg.max_daily_loss_pct / 100
+            assert losses < cfg.max_consecutive_losses and n_open < cfg.max_open_positions
+            _lots, risk = engine.position_risk_usd(c)
+            assert (
+                0
+                < risk
+                <= min(cfg.max_risk_per_trade_usd, cfg.reference_balance_usd * cfg.risk_per_trade_pct / 100) + 1e-9
+            )
+
+    check()

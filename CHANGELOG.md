@@ -36,6 +36,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Documentation: architecture, configuration reference (generated), features (generated), ML, backtesting, risk,
   news providers, troubleshooting and optional VPS deployment.
 
+- MetaTrader 5 integration:
+  - MQL5 chart indicator showing decisions, stop-loss and take-profit lines and tick verdicts;
+  - demo-only, observe-only observer EA recording every tick and resolving stop vs. target first touch live;
+  - tick-export script;
+  - Python bridge (`mt5bot bridge`), Python tick collection (`mt5bot ticks`) and tick-resolved backtests (`--tick-resolve`);
+  - migration 0004.
+- Ljung-Box autocorrelation p-value (statsmodels) in trade metrics; hypothesis property test for the risk engine.
+
 ### Security
 
 - Secrets are `SecretStr` values redacted from logs and errors; `config/local.toml`, `reports/` and backups are git-ignored.

@@ -216,6 +216,14 @@ class MonitorSettings(_Strict):
     interval_seconds: int = Field(default=60, ge=5, le=3600)
 
 
+class BridgeSettings(_Strict):
+    # File exchange with the MQL5 components; None means <APPDATA>/MetaQuotes/Terminal/Common/Files/mt5bot.
+    enabled: bool = True
+    directory: Path | None = None
+    max_decisions: int = Field(default=300, ge=10, le=5000)
+    import_ticks: bool = True
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="MT5BOT_",
@@ -242,6 +250,7 @@ class Settings(BaseSettings):
     llm: LLMSettings = Field(default_factory=LLMSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     monitor: MonitorSettings = Field(default_factory=MonitorSettings)
+    bridge: BridgeSettings = Field(default_factory=BridgeSettings)
 
     @classmethod
     def settings_customise_sources(

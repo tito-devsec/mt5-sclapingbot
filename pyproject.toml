@@ -46,7 +46,7 @@ tracking = ["mlflow>=2.15,<4"]
 llm = ["anthropic>=2.0,<3"]
 dev = ["pytest>=8", "hypothesis>=6.100", "ruff>=0.6", "mypy>=1.11"]
 all = [
-    "mt5-sclapingbot[boost,regime,online,tuning,explain,uncertainty,perf]",
+    "mt5-sclapingbot[boost,regime,online,tuning,explain,uncertainty]",
 ]
 
 [project.scripts]

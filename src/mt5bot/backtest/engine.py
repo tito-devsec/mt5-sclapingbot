@@ -7,7 +7,15 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from mt5bot.backtest.simulator import BarArrays, CostModel, Sizing, TradeResult, results_frame, simulate_trade
+from mt5bot.backtest.simulator import (
+    AmbiguityResolver,
+    BarArrays,
+    CostModel,
+    Sizing,
+    TradeResult,
+    results_frame,
+    simulate_trade,
+)
 from mt5bot.core.types import Direction, InstrumentSpec, Timeframe
 
 # chooser(candidates_at_one_bar) -> the subset to take (rows of the same frame)
@@ -34,6 +42,7 @@ def run_backtest(
     sizing: Sizing,
     chooser: Chooser = take_all_eligible,
     max_concurrent: int | None = None,
+    resolver_for: Callable[[Direction], AmbiguityResolver] | None = None,
 ) -> BacktestResult:
     arrays = BarArrays(bars, tf)
     results: list[TradeResult] = []
@@ -68,6 +77,7 @@ def run_backtest(
                 sizing,
                 strategy=row.strategy,
                 regime=getattr(row, "regime", None),
+                resolver=resolver_for(Direction(row.direction)) if resolver_for else None,
             )
             if r.status != "FILLED":
                 skipped[r.status] = skipped.get(r.status, 0) + 1

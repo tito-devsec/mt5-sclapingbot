@@ -102,6 +102,10 @@ PURPOSE: dict[str, str] = {
     "logging.level": "Log level",
     "logging.json_format": "JSON log lines (true) or plain text",
     "monitor.interval_seconds": "Seconds between observe-only monitoring cycles",
+    "bridge.enabled": "Exchange decisions, levels and tick results with the MQL5 indicator and observer EA",
+    "bridge.directory": "Exchange folder; empty uses MT5's Common\\Files\\mt5bot folder",
+    "bridge.max_decisions": "Most recent decisions exported per symbol and timeframe for the chart",
+    "bridge.import_ticks": "Import tick files recorded by the observer EA into the quotes table",
 }
 
 

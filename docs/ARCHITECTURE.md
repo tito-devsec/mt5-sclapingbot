@@ -8,6 +8,7 @@
 | Research and inference | `pipeline/inference.py` | Produce `RECOMMEND` / `NO_TRADE` / `UNCERTAIN` / `REJECTED` research records |
 | Historical simulation | `backtest/`, `pipeline/jobs.py`, `replay` | Cost-aware simulation, training and evaluation |
 | Demo monitoring | `monitor/service.py` | Observe the demo account and market, and record decisions (`OBSERVED_DEMO`) |
+| Terminal-side view and tick verdicts | `mql5/` + `bridge/` | Draw decisions and SL/TP on charts, record ticks, resolve SL/TP first-touch live (no trading) |
 | Order execution | not implemented | **Out of scope.** No code path exists, and `tests/safety/` enforces this. |
 
 ## Data flow
@@ -38,6 +39,11 @@ flowchart TD
     TR --> REG
     DB --> RPT["reporting/report.py"]
     LLM["llm/adapter.py (disabled by default)"] -.->|"untrusted text only"| RPT
+    DEC --> BR["bridge/ (Common\\Files\\mt5bot)"]
+    BR --> IND["MQL5 indicator: arrows, SL/TP lines, panel"]
+    BR --> EA["MQL5 observer EA (demo-only, observe-only)"]
+    EA -->|"ticks + TP/SL first-touch"| BR
+    BR -->|"tick verdicts"| OUT
 ```
 
 ## Components
@@ -63,7 +69,10 @@ flowchart TD
 | `memory/` | Delayed outcome evaluation and attribution, counterfactual candidate outcomes |
 | `drift/` | Detectors and alert persistence, suspension and resolution |
 | `pipeline/` | The single decision path, replay, training and backtest jobs |
-| `monitor/` | Observe-only loop with per-cycle account validation and graceful shutdown |
+| `monitor/` | Observe-only loop with per-cycle account validation, graceful shutdown and bridge sync |
+| `bridge/` | CSV exchange with the MQL5 components: export decisions, levels and status; import tick verdicts and tick files |
+| `backtest/ticks.py` | First-touch resolution of bars that hit both stop and target, from stored ticks or EA verdicts |
+| `mql5/` | Chart indicator, observer EA and tick-export script (see `docs/MT5_INTEGRATION.md`) |
 | `reporting/` | Text status, static HTML report, CSV export |
 | `cli.py` | `mt5bot` entry point |
 
@@ -87,5 +96,6 @@ Each row in `decisions` stores:
 | `0001_initial` | All core tables |
 | `0002_instrument_specs` | Broker contract specs captured during collection |
 | `0003_candidate_outcomes` | Candidate trade geometry and counterfactual outcomes |
+| `0004_tick_resolutions` | Tick-level stop/target first-touch verdicts, plus a quotes time index |
 
 Migrations run automatically when a database is opened. A backup of a non-empty database is written first (`*.pre-vNNNN-*.bak`).

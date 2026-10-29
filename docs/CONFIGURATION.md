@@ -97,3 +97,7 @@ Sources, highest priority first: environment variables `MT5BOT_<SECTION>__<KEY>`
 | `logging.level` | Log level | `'DEBUG' \| 'INFO' \| 'WARNING' \| 'ERROR'` | `INFO` | - | no |
 | `logging.json_format` | JSON log lines (true) or plain text | `bool` | `True` | - | no |
 | `monitor.interval_seconds` | Seconds between observe-only monitoring cycles | `int` | `60` | >= 5, <= 3600 | no |
+| `bridge.enabled` | Exchange decisions, levels and tick results with the MQL5 indicator and observer EA | `bool` | `True` | - | no |
+| `bridge.directory` | Exchange folder; empty uses MT5's Common\Files\mt5bot folder | `Path \| None` | `None` | - | no |
+| `bridge.max_decisions` | Most recent decisions exported per symbol and timeframe for the chart | `int` | `300` | >= 10, <= 5000 | no |
+| `bridge.import_ticks` | Import tick files recorded by the observer EA into the quotes table | `bool` | `True` | - | no |

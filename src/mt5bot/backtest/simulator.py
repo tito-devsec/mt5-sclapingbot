@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pandas as pd
@@ -63,6 +64,12 @@ class TradeResult:
     bars_held: int = 0
     label_available_at: pd.Timestamp | None = None
     regime: str | None = None
+    ambiguous: bool = False
+    resolution: str = ""
+
+
+# Called for a bar that touched both levels: (bar_start_utc, bar_end_utc, stop, target) -> "STOP" | "TARGET" | None.
+AmbiguityResolver = Callable[[pd.Timestamp, pd.Timestamp, float, float], str | None]
 
 
 def usd_per_quote_unit(spec: InstrumentSpec, price: float) -> float:
@@ -125,6 +132,7 @@ def simulate_trade(
     sizing: Sizing,
     strategy: str = "",
     regime: str | None = None,
+    resolver: AmbiguityResolver | None = None,
 ) -> TradeResult:
     tf = bars.tf
     res = TradeResult(
@@ -167,7 +175,17 @@ def simulate_trade(
         if j > e and gap_stop:
             exit_idx, exit_reason, exit_fill = j, "STOP_GAP", op - sgn * slip
             break
-        if hit_stop:  # stop wins any intrabar tie with the target (conservative)
+        if hit_stop and hit_target:  # intrabar ambiguity: ticks decide if available, else the stop wins
+            res.ambiguous = True
+            verdict = resolver(bars.time[j], bars.time[j] + tf.delta, stop, target) if resolver else None
+            if verdict == "TARGET":
+                res.resolution = "TICKS_TARGET"
+                exit_idx, exit_reason, exit_fill = j, "TARGET", target - sgn * slip
+            else:
+                res.resolution = "TICKS_STOP" if verdict == "STOP" else "ASSUMED_STOP"
+                exit_idx, exit_reason, exit_fill = j, "STOP", stop - sgn * slip
+            break
+        if hit_stop:
             exit_idx, exit_reason, exit_fill = j, "STOP", stop - sgn * slip
             break
         if hit_target:
