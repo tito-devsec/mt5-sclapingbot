@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mt5-sclapingbot"
+version = "0.1.0.dev0"
+description = "Research system for adaptive, risk-aware short-timeframe trading on MetaTrader 5 (data, ML, simulation, observe-only monitoring)."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "tito-devsec" }]
+requires-python = ">=3.12,<3.14"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "numpy>=2.0,<3",
+    "pandas>=2.2,<4",
+    "scipy>=1.13,<2",
+    "scikit-learn>=1.6,<2",
+    "statsmodels>=0.14,<1",
+    "pyarrow>=16",
+    "skops>=0.10,<1",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+    "httpx>=0.27,<1",
+    "feedparser>=6.0,<7",
+    "defusedxml>=0.7,<1",
+    "MetaTrader5>=5.0.45; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+boost = ["lightgbm>=4.3,<5", "xgboost>=2.1,<4", "catboost>=1.2,<2"]
+regime = ["hmmlearn>=0.3,<1", "ruptures>=1.1,<2", "arch>=7,<9"]
+online = ["river>=0.21,<1"]
+tuning = ["optuna>=4,<6"]
+explain = ["shap>=0.46,<1"]
+uncertainty = ["mapie>=1.0,<2", "imbalanced-learn>=0.12,<1"]
+perf = ["numba>=0.60,<1"]
+deep = ["torch>=2.4,<3", "onnxruntime>=1.18,<2"]
+tracking = ["mlflow>=2.15,<4"]
+llm = ["anthropic>=2.0,<3"]
+dev = ["pytest>=8", "hypothesis>=6.100", "ruff>=0.6", "mypy>=1.11"]
+all = [
+    "mt5-sclapingbot[boost,regime,online,tuning,explain,uncertainty,perf]",
+]
+
+[project.scripts]
+mt5bot = "mt5bot.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"mt5bot.storage" = ["migrations/*.sql"]
+"mt5bot.config" = ["default.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = ["ignore::DeprecationWarning:hmmlearn.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = ["S101", "S608", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "E501"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["mt5bot.risk.*", "mt5bot.storage.*", "mt5bot.gateway.*"]
+disallow_untyped_defs = true

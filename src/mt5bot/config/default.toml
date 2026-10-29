@@ -1,0 +1,75 @@
+# Non-secret defaults; copy to config/local.toml (git-ignored) and keep secrets in .env.
+
+[mt5]
+expected_currency = "USD"
+# Explicit broker names when resolution is ambiguous, e.g. { EURUSD = "EURUSD.m" }.
+symbol_map = {}
+
+[instruments]
+symbols = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]
+timeframes = ["M1", "M5", "M15", "H1"]
+
+[collection]
+max_bars_per_request = 20000
+request_pause_seconds = 0.2
+default_history_days = 730
+
+[storage]
+db_path = "data/mt5bot.db"
+model_dir = "models"
+report_dir = "reports"
+log_dir = "logs"
+
+[strategy]
+enabled = ["trend", "breakout"]
+max_hold_minutes = 60
+
+[costs]
+# JustMarkets commission depends on the account type; verify on your demo account.
+commission_per_lot_per_side_usd = 0.0
+slippage_points = { "*" = 2.0, XAUUSD = 5.0 }
+
+[risk]
+reference_balance_usd = 1000.0   # configured reference value, NOT a verified balance
+risk_per_trade_pct = 0.5
+max_risk_per_trade_usd = 10.0
+max_daily_loss_pct = 2.0
+max_drawdown_pct = 10.0
+emergency_disable = false
+
+[news]
+enabled = true
+stale_after_minutes = 180
+
+# Official feeds (verified to exist); review each publisher's terms before setting enabled = true.
+[[news.providers]]
+id = "fed_press"
+url = "https://www.federalreserve.gov/feeds/press_all.xml"
+currencies = ["USD"]
+category = "central_bank"
+enabled = false
+
+[[news.providers]]
+id = "ecb_press"
+url = "https://www.ecb.europa.eu/rss/press.html"
+currencies = ["EUR"]
+category = "central_bank"
+enabled = false
+
+[[news.providers]]
+id = "boe_news"
+url = "https://www.bankofengland.co.uk/rss/news"
+currencies = ["GBP"]
+category = "central_bank"
+enabled = false
+
+[llm]
+enabled = false
+provider = "none"
+
+[logging]
+level = "INFO"
+json_format = true
+
+[monitor]
+interval_seconds = 60
