@@ -1,0 +1,7 @@
+# Safety-critical components require review by the maintainer.
+*                         @tito-devsec
+/src/mt5bot/risk/         @tito-devsec
+/src/mt5bot/gateway/      @tito-devsec
+/src/mt5bot/llm/          @tito-devsec
+/tests/safety/            @tito-devsec
+/.github/                 @tito-devsec
