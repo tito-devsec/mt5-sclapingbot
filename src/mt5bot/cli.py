@@ -481,6 +481,37 @@ def cmd_ticks(s: Settings, a: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_verify(s: Settings, a: argparse.Namespace) -> int:
+    from mt5bot.bridge.service import import_results
+    from mt5bot.pipeline.verify import verification_results
+
+    clock = _clock(s)
+    if clock is None:
+        print("set mt5.server_timezone first (run `mt5bot check` to see the offset)")
+        return EXIT_VALIDATION
+    conn = _db(s)
+    rep = import_results(conn, s, clock)
+    for sym, hb in rep.heartbeats.items():
+        print(f"EA heartbeat {sym}: {hb}")
+    if not rep.heartbeats:
+        print("no EA heartbeat found: attach MT5Bot_Observer to a chart of each symbol")
+    rows = verification_results(conn)
+    if not rows:
+        print("no rules-based trade recorded yet: keep `mt5bot monitor start` running until a strategy rule fires")
+        return EXIT_VALIDATION
+    done = 0
+    for r in rows:
+        state = r["first_hit"] or "TRACKING (or EA not running)"
+        done += r["first_hit"] in ("TP", "SL")
+        print(
+            f"#{r['id']} {r['symbol']} {r['timeframe']} {r['status']:9} {r['strategy']} {r['direction']:5} "
+            f"bar {r['bar_time_utc']} -> {state} at {r['hit_time_utc'] or '-'} fill={r['entry_price']} "
+            f"exit={r['hit_price']} ticks={r['ticks_seen']}"
+        )
+    print(f"{done} trade(s) resolved by live ticks (paper tracking only; no order is ever sent).")
+    return EXIT_OK if done >= 2 else EXIT_VALIDATION
+
+
 def cmd_llm_explain(s: Settings, a: argparse.Namespace) -> int:
     from mt5bot.llm.adapter import ResearchAdapter
     from mt5bot.storage.repositories import DecisionRepository
@@ -571,6 +602,8 @@ def build_parser() -> argparse.ArgumentParser:
     br.add_argument("action", choices=["path", "export", "import"])
     br.add_argument("--mode", default="SIMULATED", choices=["SIMULATED", "HISTORICAL", "OBSERVED_DEMO"])
     br.set_defaults(fn=cmd_bridge)
+    vf = sub.add_parser("verify", help="show rules-based trades the observer EA resolved on live ticks (no orders)")
+    vf.set_defaults(fn=cmd_verify)
     tk = sub.add_parser("ticks", help="collect ticks through the Python MT5 API")
     tk.add_argument("action", choices=["collect", "ambiguous"])
     tk.add_argument("--symbol", required=True)

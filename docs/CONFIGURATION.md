@@ -51,6 +51,8 @@ Sources, highest priority first: environment variables `MT5BOT_<SECTION>__<KEY>`
 | `evaluation.promotion_cost_multiplier` | Promotion gate: expectancy must stay positive at this cost multiple | `float` | `1.5` | >= 1.0 | no |
 | `evaluation.min_positive_fold_share` | Promotion gate: share of walk-forward folds with positive expectancy | `float` | `0.6` | >= 0, <= 1 | no |
 | `evaluation.min_deflated_sharpe_prob` | Promotion gate: minimum deflated-Sharpe probability | `float` | `0.5` | >= 0, < 1 | no |
+| `selection.mode` | rules (default): rule-eligible candidates go to the risk engine; evidence; or ml (champion) | `'rules' \| 'evidence' \| 'ml'` | `rules` | - | no |
+| `selection.rules_memory_veto` | In rules mode, let performance memory veto a strategy proven negative after costs | `bool` | `True` | - | no |
 | `selection.min_samples` | Evidence needed before performance memory can qualify or veto a candidate | `int` | `30` | >= 1 | no |
 | `selection.lcb_z` | z-score of the lower confidence bound on mean reward | `float` | `1.0` | >= 0, <= 5 | no |
 | `selection.reward_clip_low` | Lower clip of net R in the reward | `float` | `-1.5` | - | no |

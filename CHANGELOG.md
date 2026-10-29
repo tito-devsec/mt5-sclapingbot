@@ -42,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - tick-export script;
   - Python bridge (`mt5bot bridge`), Python tick collection (`mt5bot ticks`) and tick-resolved backtests (`--tick-resolve`);
   - migration 0004.
+- Rules-based selection mode (`selection.mode = "rules"`, now the default); `evidence` and `ml` modes kept for later.
+- `mt5bot verify` and `docs/VERIFY_ON_MT5.md` for an end-to-end check on the demo terminal with tick-resolved trades.
 - Ljung-Box autocorrelation p-value (statsmodels) in trade metrics; hypothesis property test for the risk engine.
 
 ### Security

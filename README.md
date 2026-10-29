@@ -54,7 +54,7 @@ Fixed-rule scalping bots apply the same logic in every market and are very sensi
 
 1. **Classify the market regime** (trend, range, breakout/expansion, high or low volatility, or uncertain) using information available at each bar's close.
 2. **Generate candidates from specialist strategies** (trend-following and breakout; mean-reversion is optional) that are eligible only in suitable regimes.
-3. **Score candidates** with a calibrated local ML model and with performance memory measured **after costs**, and **abstain** when the evidence is weak.
+3. **Select candidates by the strategy rules** (current mode). Later, a calibrated local ML model and performance memory measured **after costs** can do the scoring and **abstain** when the evidence is weak.
 4. **Pass every proposal through an independent risk engine** that cannot be overridden, and record the full decision for later review.
 5. **Show everything on the MT5 charts** (decisions, stop-loss, take-profit, and which level real ticks hit first), and learn only from outcomes that were knowable at the time.
 
@@ -88,7 +88,8 @@ Configured for the JustMarkets **demo** account, the USD reference currency, EUR
 | Local ML models | Implemented | `ml/` | logreg, random forest, LightGBM, XGBoost, CatBoost; calibration; conformal abstention. |
 | Model versioning and rollback | Implemented | `ml/registry.py` | skops artifacts, SHA-256, type allow-list, champion vs. challenger gates. |
 | Hyper-parameter tuning and SHAP | Implemented | `ml/tuning.py`, `ml/explain.py` | Validation folds only; every trial is counted. |
-| Adaptive strategy selection | Implemented | `selection/selector.py` | Lower-confidence-bound evidence with minimum samples, plus champion probability; `NO_TRADE` / `UNCERTAIN`. |
+| Rules-based selection (**current default**) | Implemented | `selection/selector.py` | `selection.mode = "rules"`: a rule-eligible candidate goes to the risk engine; memory vetoes proven losers. No ML model is used. |
+| Adaptive / ML selection (for later) | Implemented, not default | `selection/selector.py` | `mode = "evidence"` (performance-memory LCB) or `mode = "ml"` (champion probability + conformal abstention). |
 | Contextual bandit | Implemented (offline only) | `selection/bandit.py` | LinUCB replay with delayed rewards; not in the decision path. |
 | Concept-drift detection | Implemented | `drift/` | PSI, chi-square, Brier, Page-Hinkley + ADWIN, feed staleness, spread shift. |
 | Persistent decision memory | Implemented | `memory/outcomes.py`, `storage/` | Abstentions and rejections recorded; counterfactual candidate outcomes; rule-based attribution. |
@@ -298,6 +299,7 @@ mt5bot replay --symbol EURUSD --timeframe M1 --from 2024-06-01    # HISTORICAL d
 mt5bot recommend --symbol EURUSD --timeframe M5 --observe         # one OBSERVED_DEMO research decision
 mt5bot monitor start                                              # observe-only loop; syncs the MT5 charts each cycle
 mt5bot bridge export | import | path                              # manual chart/EA exchange
+mt5bot verify                                                     # rules-based trades the EA resolved on live ticks
 mt5bot outcomes
 mt5bot drift --symbol EURUSD --timeframe M1
 mt5bot models list | history | show --id <id> | rollback
@@ -318,7 +320,7 @@ In brief:
 - **Training.** Models train locally on CPU and are evaluated once on an untouched chronological test window.
 - **Promotion.** A challenger is promoted only if it beats both the rule baseline and the champion after costs, under cost stress and across walk-forward folds, and passes a deflated-Sharpe gate that accounts for every recorded trial.
 
-No model has been trained on real data in this repository, so no performance numbers exist or are claimed.
+**Current mode is rules-based** (`selection.mode = "rules"`). The ML stack is built and tested, but no model is used for decisions until you switch to `mode = "ml"` after a model passes the promotion gates on your real data. No model has been trained on real data yet, so no performance numbers exist or are claimed.
 
 ## Testing and validation
 
@@ -373,7 +375,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). It covers the terminal, 
 
 There are no delivery dates. The detailed phase plan is in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
-1. **Next, on your Windows PC:**
+1. **Next, on your Windows PC** (step-by-step: [docs/VERIFY_ON_MT5.md](docs/VERIFY_ON_MT5.md)):
    - Compile the MQL5 files and report any MetaEditor message.
    - Run `mt5bot check` and set the server time zone.
    - Collect real history, run a tick-resolved backtest, and train.

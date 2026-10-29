@@ -56,6 +56,8 @@ PURPOSE: dict[str, str] = {
     "evaluation.promotion_cost_multiplier": "Promotion gate: expectancy must stay positive at this cost multiple",
     "evaluation.min_positive_fold_share": "Promotion gate: share of walk-forward folds with positive expectancy",
     "evaluation.min_deflated_sharpe_prob": "Promotion gate: minimum deflated-Sharpe probability",
+    "selection.mode": "rules (default): rule-eligible candidates go to the risk engine; evidence; or ml (champion)",
+    "selection.rules_memory_veto": "In rules mode, let performance memory veto a strategy proven negative after costs",
     "selection.min_samples": "Evidence needed before performance memory can qualify or veto a candidate",
     "selection.lcb_z": "z-score of the lower confidence bound on mean reward",
     "selection.reward_clip_low": "Lower clip of net R in the reward",

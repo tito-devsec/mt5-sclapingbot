@@ -134,6 +134,9 @@ class EvaluationSettings(_Strict):
 
 
 class SelectionSettings(_Strict):
+    # rules: rule-eligible candidates go to the risk engine; evidence: needs performance memory; ml: champion model.
+    mode: Literal["rules", "evidence", "ml"] = "rules"
+    rules_memory_veto: bool = True
     min_samples: int = Field(default=30, ge=1)
     lcb_z: float = Field(default=1.0, ge=0, le=5)
     reward_clip_low: float = -1.5

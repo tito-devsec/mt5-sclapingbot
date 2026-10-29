@@ -308,3 +308,51 @@ def test_partial_last_tick_line_ignored(conn, tmp_path):
     f = tmp_path / "ticks_EURUSD_x.csv"
     f.write_text(f"time_msc,bid,ask\r\n{msc},1.1,1.1001\r\n{msc + 5},1.10", encoding="ascii")
     assert import_tick_file(conn, "EURUSD", f, CLOCK) == 1
+
+
+def test_verify_reports_tick_resolved_rule_trades(tmp_path, monkeypatch, capsys):
+    from mt5bot import cli
+    from mt5bot.storage.db import open_database
+
+    db = tmp_path / "v.db"
+    toml = tmp_path / "c.toml"
+    toml.write_text(
+        f'[mt5]\nserver_utc_offset_hours = 0\n[storage]\ndb_path = "{db.as_posix()}"\n'
+        f'[bridge]\ndirectory = "{(tmp_path / "br").as_posix()}"\n[logging]\nlevel = "WARNING"\n'
+    )
+    monkeypatch.setenv("MT5BOT_CONFIG_FILE", str(toml))
+    assert cli.main(["verify"]) == 2  # nothing recorded yet
+    conn = open_database(db)
+    ids = []
+    for k, direction in enumerate(("LONG", "SHORT")):
+        bar = (T0 + pd.Timedelta(minutes=k)).isoformat()
+        d = {
+            "decided_at": bar,
+            "bar_time_utc": bar,
+            "symbol": "EURUSD",
+            "timeframe": "M1",
+            "mode": "OBSERVED_DEMO",
+            "status": "RECOMMEND",
+            "regime": "TREND_UP",
+            "rationale": "rules",
+            "config_hash": "h",
+            "selected_strategy": "trend",
+            "direction": direction,
+            "entry_ref": 1.1,
+            "stop_distance": 0.001,
+            "target_distance": 0.0015,
+            "max_hold_bars": 60,
+        }
+        ids.append(DecisionRepository(conn).save(d, [], [], []))
+    conn.close()
+    br = tmp_path / "br"
+    br.mkdir()
+    hit = int(T0.timestamp()) * 1000 + 120_000
+    (br / "resolved_EURUSD.csv").write_text(
+        "id,entry_msc,entry_price,first_hit,hit_msc,hit_price,ticks\r\n"
+        f"{ids[0]},{hit - 60000},1.1,TP,{hit},1.1015,40\r\n{ids[1]},{hit - 60000},1.1,SL,{hit + 5000},1.101,22\r\n"
+    )
+    (br / "heartbeat_EURUSD.txt").write_text("server_time=1\r\ntrade_mode=DEMO\r\n")
+    assert cli.main(["verify"]) == 0
+    out = capsys.readouterr().out
+    assert "2 trade(s) resolved by live ticks" in out and "trade_mode=DEMO" in out and "-> TP" in out

@@ -93,8 +93,17 @@ def select(
             sc.reason = str(row.eligibility_reason)
         elif row.strategy in suspended:
             sc.reason = "STRATEGY_SUSPENDED"
-        elif enough and sc.lcb_reward is not None and sc.lcb_reward <= 0:
+        elif (
+            enough
+            and sc.lcb_reward is not None
+            and sc.lcb_reward <= 0
+            and (cfg.mode != "rules" or cfg.rules_memory_veto)
+        ):
             sc.reason = "NEGATIVE_LCB"
+        elif cfg.mode == "rules":
+            # Rules mode: the strategy rule decides; prefer the better reward/risk, then the earlier strategy.
+            rr = float(getattr(row, "target_distance", 1.0)) / max(float(getattr(row, "stop_distance", 1.0)), 1e-12)
+            sc.eligible, sc.score = True, rr
         elif model is None:
             if not enough:
                 sc.reason = "INSUFFICIENT_EVIDENCE"
@@ -119,9 +128,10 @@ def select(
         reasons = sorted({s.reason for s in scores})
         return SelectionResult(DecisionStatus.NO_TRADE, None, scores, "no candidate qualified: " + ", ".join(reasons))
     best = max(qualified, key=lambda s: (s.score or 0.0, -s.index))
+    basis = "rules" if cfg.mode == "rules" else ("model" if model is not None else "evidence")
     return SelectionResult(
         DecisionStatus.RECOMMEND,
         best.index,
         scores,
-        f"selected {best.strategy} {best.direction} (score {best.score:.3f}, n={best.sample_size})",
+        f"selected {best.strategy} {best.direction} by {basis} (score {best.score:.3f}, n={best.sample_size})",
     )

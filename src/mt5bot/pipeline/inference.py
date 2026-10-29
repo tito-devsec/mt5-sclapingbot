@@ -175,7 +175,10 @@ class ResearchPipeline:
         if not cands.empty:
             cands = cands[cands["time_utc"] == bar_time].reset_index(drop=True)
 
-        model_id, model, model_note = self.champion(decision_time, mode)
+        if self.s.selection.mode == "ml":
+            model_id, model, model_note = self.champion(decision_time, mode)
+        else:
+            model_id, model, model_note = None, None, f"{self.s.selection.mode}-based selection (no ML model used)"
         notes.append(model_note)
         model_input = None
         if model is not None and not cands.empty:
@@ -228,7 +231,7 @@ class ResearchPipeline:
             )
             assert result.chosen is not None
             p = result.scores[result.chosen].probability
-            uncertainty = (1.0 - p) if p is not None else 0.5  # evidence-only: fixed, documented value
+            uncertainty = (1.0 - p) if p is not None else 0.5  # rules and evidence modes: fixed, documented value
             realized = self.sim_state.realized(mode, decision_time.to_pydatetime())
             budget = sizing(self.s).risk_budget_usd
             day = (

@@ -62,6 +62,10 @@ Rules for the exchange files:
    - drag **MT5Bot_Observer** onto **one** chart per symbol. It needs no trading permission; leave "Algo Trading" off if you like, because the EA never trades.
 4. **Start Python:** run `mt5bot monitor start`. Every cycle it imports EA results and ticks, makes decisions, and exports decisions, watched levels and status. The chart refreshes every few seconds.
 
+## Verify end to end
+
+Follow [VERIFY_ON_MT5.md](VERIFY_ON_MT5.md). It runs rules-based mode until at least two trades are resolved by live ticks, then confirms them with `mt5bot verify`.
+
 ## Commands
 
 ```powershell

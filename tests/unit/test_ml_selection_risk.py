@@ -225,7 +225,8 @@ def cands(**over):
     return pd.DataFrame([{**base, **over}])
 
 
-CFG = SelectionSettings(min_samples=30)
+CFG = SelectionSettings(mode="evidence", min_samples=30)
+RULES = SelectionSettings(mode="rules", min_samples=30)
 
 
 def test_selector_no_trade_without_evidence_or_model():
@@ -443,3 +444,54 @@ def test_risk_engine_property_never_approves_limit_breaches():
             )
 
     check()
+
+
+def test_rules_mode_recommends_eligible_candidate_without_evidence():
+    r = select(cands(), regime="TREND_UP", data_ok=True, suspended=set(), stats_for=lambda row: None, cfg=RULES)
+    assert r.status is DecisionStatus.RECOMMEND and "by rules" in r.rationale
+
+
+def test_rules_mode_still_respects_eligibility_suspension_and_veto():
+    assert (
+        select(
+            cands(eligible=False, eligibility_reason="REGIME_NOT_ELIGIBLE"),
+            regime="RANGE",
+            data_ok=True,
+            suspended=set(),
+            stats_for=lambda row: None,
+            cfg=RULES,
+        ).status
+        is DecisionStatus.NO_TRADE
+    )
+    assert (
+        select(
+            cands(), regime="TREND_UP", data_ok=True, suspended={"trend"}, stats_for=lambda row: None, cfg=RULES
+        ).status
+        is DecisionStatus.NO_TRADE
+    )
+    losing = lambda row: (200, -0.2, 0.5)  # noqa: E731
+    assert (
+        select(cands(), regime="TREND_UP", data_ok=True, suspended=set(), stats_for=losing, cfg=RULES).scores[0].reason
+        == "NEGATIVE_LCB"
+    )
+    no_veto = SelectionSettings(mode="rules", rules_memory_veto=False)
+    assert (
+        select(cands(), regime="TREND_UP", data_ok=True, suspended=set(), stats_for=losing, cfg=no_veto).status
+        is DecisionStatus.RECOMMEND
+    )
+    assert (
+        select(cands(), regime="UNCERTAIN", data_ok=True, suspended=set(), stats_for=lambda row: None, cfg=RULES).status
+        is DecisionStatus.UNCERTAIN
+    )
+
+
+def test_rules_mode_prefers_better_reward_risk():
+    two = pd.concat(
+        [
+            cands(stop_distance=0.001, target_distance=0.0015),
+            cands(strategy="breakout", strategy_version="b", stop_distance=0.001, target_distance=0.002),
+        ],
+        ignore_index=True,
+    )
+    r = select(two, regime="TREND_UP", data_ok=True, suspended=set(), stats_for=lambda row: None, cfg=RULES)
+    assert r.scores[r.chosen].strategy == "breakout"

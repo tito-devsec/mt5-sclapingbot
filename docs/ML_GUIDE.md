@@ -68,6 +68,14 @@ How promotion, rejection and rollback work:
 
 Artifacts are saved with **skops**, a SHA-256 hash and an allow-list of types. A tampered, missing or untrusted artifact is refused. Inference then falls back to the documented evidence-only baseline, which may result in `NO_TRADE`.
 
+## Selection modes
+
+| `selection.mode` | Decision basis | When to use |
+|---|---|---|
+| `rules` (**default**) | A rule-eligible, non-suspended candidate goes to the risk engine. If several qualify, the better reward/risk wins. Performance memory can veto a strategy with enough evidence of losing (`rules_memory_veto`). | Now: verification and data gathering |
+| `evidence` | The candidate also needs n ≥ `min_samples` and a positive lower confidence bound on its context bucket | After weeks of recorded outcomes |
+| `ml` | The champion model's calibrated probability and conformal set, plus evidence | After a challenger passes all promotion gates on your real data |
+
 ## Adaptive selection (`selection/`)
 
 **Reward**, defined before use:
