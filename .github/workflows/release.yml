@@ -31,10 +31,10 @@ jobs:
           if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "${tag}" ]; then
             echo "tag ${GITHUB_REF_NAME} != package version ${version}"; exit 1
           fi
-          if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "release ${tag} already exists"; exit 1
-          fi
+          exists=0
+          if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then exists=1; fi
           echo "TAG=${tag}" >> "${GITHUB_ENV}"
+          echo "EXISTS=${exists}" >> "${GITHUB_ENV}"
       - name: Lint, type check and test
         run: |
           python -m pip install --upgrade pip
@@ -56,10 +56,15 @@ jobs:
           awk -v ver="$v" 'index($0, "## [" ver "]") == 1 {f=1; next} f && /^## \[/ {exit} f {print}' CHANGELOG.md > section.md
           test -s section.md
           cat section.md >> notes.md
-      - name: Publish pre-release
+      - name: Publish release (marked Latest)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # A manual run creates the tag on GitHub at the tested commit; a tag push reuses the pushed tag.
-          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "mt5-sclapingbot ${TAG} (research pre-release)" --notes-file notes.md --prerelease
+          # An existing release only gets its title, notes and Latest flag refreshed; its tag and assets stay as built.
+          if [ "${EXISTS}" = "1" ]; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "mt5-sclapingbot ${TAG}" \
+              --notes-file notes.md --prerelease=false --latest
+          else
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "mt5-sclapingbot ${TAG}" --notes-file notes.md --latest
+          fi

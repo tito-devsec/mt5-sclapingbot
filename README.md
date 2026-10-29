@@ -5,7 +5,7 @@
 **Maintainer:** [@tito-devsec](https://github.com/tito-devsec)
 **Development status:** 🧪 **Research prototype (pre-alpha).** Plan Phases 0–19 are implemented and tested offline, and the code includes a MetaTrader 5 chart and tick integration. The next step is live verification on a Windows PC with the JustMarkets demo terminal. **Order execution does not exist and is out of scope.**
 
-**Latest release:** [v0.1.0](https://github.com/tito-devsec/mt5-sclapingbot/releases/tag/v0.1.0) (research pre-release; see [CHANGELOG.md](CHANGELOG.md))
+**Latest release:** [v0.1.0](https://github.com/tito-devsec/mt5-sclapingbot/releases/tag/v0.1.0) (pre-alpha research release; see [CHANGELOG.md](CHANGELOG.md))
 
 **Suggested GitHub topics:** `mt5` · `metatrader5` · `mql5` · `algorithmic-trading` · `scalping-bot` · `machine-learning` · `adaptive-trading` · `quantitative-finance` · `python` · `forex` · `risk-management`
 
