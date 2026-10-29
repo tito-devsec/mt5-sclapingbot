@@ -147,9 +147,9 @@ These are the **expected** requirements. They are not verified, because no code 
 | Requirement | Expected value | Notes |
 |---|---|---|
 | Operating system | Windows | The official `MetaTrader5` Python package only supports Windows. |
-| Python | To be decided | It must be a version supported by the `MetaTrader5` package. |
+| Python | 3.12 (planned pin) | The `MetaTrader5` package ships Windows wheels for 3.6–3.14. Current numpy and scipy require ≥ 3.12. |
 | MetaTrader 5 terminal | Required, installed and logged in | The Python API talks to a running terminal. |
-| Broker account | **Demo account** | Live accounts are out of scope until validation is complete. |
+| Broker account | **JustMarkets demo account**, USD | Live accounts are out of scope. Order execution is not part of this project's current scope. |
 | Internet | Required | For terminal connectivity and data download. |
 | Terminal open during operation | Expected: yes | |
 | Storage | Unknown | It depends on the symbols, timeframes, and history depth chosen. |
