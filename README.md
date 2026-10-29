@@ -145,7 +145,7 @@ mt5-sclapingbot/
 
 ## Installation (Windows PowerShell)
 
-These commands follow the repository's actual layout. The automated tests have run on Linux only; the Windows steps have not been run in this environment.
+These commands follow the repository's actual layout. The test suite passes on Windows in CI; these interactive setup steps with a real MT5 terminal have not been run yet.
 
 ```powershell
 # 1. Python 3.12 from python.org (tick "Add to PATH"), then check:
@@ -232,7 +232,7 @@ No model has been trained on real data in this repository, so no performance num
 | `ruff check` / `ruff format --check` | clean |
 | `mypy src` | clean (86 files) |
 | Live RSS fetch (Fed, ECB, BoE) | fetched and parsed successfully |
-| Windows CI | configured in `.github/workflows/ci.yml`; **not run yet** |
+| GitHub Actions CI (Windows + Ubuntu, Python 3.12) | **passed** on commit `6d0b0c8` (lint, types, full test suite) |
 | Live MT5 terminal, demo account, real history | **not run.** It needs your Windows PC. |
 | LLM adapter against the real API | **not run.** Tested with a fake client only. |
 
@@ -278,7 +278,7 @@ There are no delivery dates. The detailed phase plan is in [docs/IMPLEMENTATION_
 
 1. **Done:** repository foundation and Phases 0–19 of the plan, offline and tested.
 2. **Next, on your Windows PC:** run `mt5bot check`, set the server time zone, collect real history, backtest, train, then run the monitor in observe-only mode.
-3. **Engineering:** schedule tick collection, add a licensed news provider, and verify the Windows CI run.
+3. **Engineering:** schedule tick collection and add a licensed news provider.
 4. **ML research:**
    - test news and sentiment features out of sample
    - compare the HMM and supervised regime models
