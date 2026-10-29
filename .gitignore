@@ -1,0 +1,67 @@
+# ---- Secrets and local configuration ----
+.env
+.env.*
+!.env.example
+*.local.*
+config.local.*
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+
+# ---- Local trading data (may reveal account activity) ----
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+*.csv
+*.parquet
+!tests/fixtures/**
+
+# ---- Logs and reports ----
+logs/
+*.log
+
+# ---- Model artifacts ----
+models/
+artifacts/
+mlruns/
+*.pkl
+*.joblib
+*.onnx
+
+# ---- MetaTrader / MQL5 build outputs ----
+*.ex5
+*.ex4
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
