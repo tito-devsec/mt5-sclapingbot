@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `README.md` documenting the project goal, its pre-implementation status, the planned architecture, and risk disclosures.
-- `CONTRIBUTING.md`, `SECURITY.md`, and `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1).
+- `CONTRIBUTING.md`, `SECURITY.md`, and `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1, reporting through GitHub private reporting).
 - `.gitignore` for Python environments, secrets, local databases, logs, market data, and model artifacts.
 - GitHub issue templates and a pull request template.
+- `LICENSE` (MIT, copyright Tito Oscar Mwaisengela).
+- `docs/IMPLEMENTATION_PLAN.md` with the proposed phased build plan.
