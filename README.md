@@ -130,11 +130,13 @@ mt5-sclapingbot/
 ├── CHANGELOG.md                 # Change history (Keep a Changelog format)
 ├── CODE_OF_CONDUCT.md           # Contributor Covenant 2.1
 ├── CONTRIBUTING.md              # Contribution policy
+├── LICENSE                      # MIT License
 ├── README.md                    # This file
+├── docs/
+│   └── IMPLEMENTATION_PLAN.md   # Phased build plan (proposed)
 └── SECURITY.md                  # Vulnerability reporting policy
 ```
 
-A `LICENSE` file has **not** been added yet. See [License](#license).
 
 ---
 
@@ -260,9 +262,9 @@ Account-validation and safety checks are **not** meant to be bypassed.
 
 ## Roadmap
 
-There are no delivery dates. Items are listed in intended order.
+There are no delivery dates. Items are listed in intended order. The detailed, phased plan is in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
-1. **Repository foundation** *(in progress)*: documentation, policies, ignore rules, and license selection.
+1. **Repository foundation** *(done)*: documentation, policies, ignore rules, and license.
 2. **Immediate engineering:** project layout, dependency manifest, configuration loading and validation, MT5 connection check with demo-account enforcement, historical data collection with validation and deduplication into SQLite, unit tests, and CI.
 3. **Research infrastructure:** indicators and features, cost-aware backtester, chronological and walk-forward evaluation.
 4. **ML research:** regime classifier, specialist strategies, strategy selector with abstention, model versioning, drift detection.
@@ -281,7 +283,9 @@ There are no delivery dates. Items are listed in intended order.
 
 ### License
 
-**No license has been selected yet.** Until a `LICENSE` file is added, default copyright law applies. In general, that means others have no permission to copy, modify, or redistribute this code, even though the repository may be publicly visible.
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Tito Oscar Mwaisengela.
+
+The MIT License lets anyone use, copy, modify, and distribute this code, including for commercial purposes, as long as the copyright and license notice are kept. It comes with no warranty. Third-party dependencies added later keep their own licenses.
 
 ---
 

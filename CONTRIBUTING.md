@@ -46,7 +46,7 @@ Use the **Feature request** issue template. Explain the problem it solves and ho
    7. **Not bypass** risk checks or account safeguards.
    8. **Disclose third-party code** and its license obligations.
    9. Contain **no unlicensed proprietary code**.
-   10. Respect the project's license, once one is selected.
+   10. Respect the project's [MIT License](LICENSE). By submitting a contribution, you agree that it is licensed under the MIT License.
 5. Expect review comments, and respond to them in the PR thread.
 
 ## Coding standards (intended)
