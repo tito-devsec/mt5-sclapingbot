@@ -51,7 +51,7 @@ plotly==7.1.0
 pluggy==1.7.0
 prettytable==3.18.0
 pyarrow==26.0.0
-pydantic==2.14.1
+pydantic==2.14.2
 pydantic-settings==2.16.2
 pydantic_core==2.50.1
 Pygments==2.21.0
