@@ -79,5 +79,5 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.6
 wcwidth==0.9.4
-wrapt==2.5.1
+wrapt==2.5.2
 xgboost==3.4.1
