@@ -57,7 +57,7 @@ pydantic_core==2.50.2
 Pygments==2.21.0
 pyparsing==3.3.3
 pytest==9.2.0
-python-dateutil==3.0.0
+python-dateutil==4.0.0
 python-dotenv==1.2.4
 PyYAML==6.0.3
 river==0.26.1
