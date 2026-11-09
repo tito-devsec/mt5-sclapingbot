@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- CI and the release workflow install dependencies with `-c requirements-lock.txt`, so they test the exact pinned versions.
+- Dependabot groups pydantic with pydantic-core (which it pins exactly) and bundles patch-level updates into one pull request.
+
 ## [0.1.0] - 2026-10-29
 
 First public research release (pre-alpha). Research, data collection, simulation and observe-only monitoring only: **no order execution exists**. Python components are tested offline and in CI (Windows and Ubuntu); the MQL5 components are statically checked but not yet compiled in MetaEditor, and nothing has yet been verified against a live MT5 terminal.

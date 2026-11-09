@@ -5,6 +5,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      # pydantic pins pydantic-core exactly, so they must always move together.
+      pydantic:
+        patterns: ["pydantic", "pydantic-core", "pydantic_core", "pydantic-settings"]
+      # Patch-level bumps of everything else arrive as one pull request.
+      patch-updates:
+        update-types: ["patch"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

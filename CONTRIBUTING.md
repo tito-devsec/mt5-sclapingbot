@@ -70,7 +70,7 @@ Update the README's feature-status table when a feature's status changes. Add an
 ## Dependency changes
 
 - Justify every new dependency, and prefer well-maintained packages.
-- Pin versions in the manifest.
+- Pin versions in the manifest, and update `requirements-lock.txt` (CI installs with `-c requirements-lock.txt`).
 - Check the dependency's license for compatibility.
 
 ## Security-sensitive changes

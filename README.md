@@ -366,7 +366,7 @@ In brief:
 - Never publish logins, passwords, server names tied to your account, balances or API keys. The bridge files contain no credentials or balances.
 - Secrets are redacted from logs and exceptions (this is tested), and the LLM adapter strips account and credential fields.
 - Model artifacts are loaded only after a SHA-256 match and a type allow-list check. SQL is parameterized.
-- CI uses a read-only token, actions pinned to commit SHAs, and `persist-credentials: false`. Dependabot is configured.
+- CI uses a read-only token, actions pinned to commit SHAs, and `persist-credentials: false`, and installs the exact versions pinned in `requirements-lock.txt`. Dependabot is configured and groups related updates.
 - Report vulnerabilities privately: see [SECURITY.md](SECURITY.md).
 
 ## Troubleshooting
