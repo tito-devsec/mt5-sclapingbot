@@ -13,6 +13,7 @@ from mt5bot.core.errors import ExecutionDisabledError, GatewayError, TerminalUna
 from mt5bot.core.types import Timeframe, ensure_utc
 from mt5bot.gateway.base import (
     BAR_COLUMNS,
+    DEAL_COLUMNS,
     QUOTE_COLUMNS,
     AccountSnapshot,
     SymbolMeta,
@@ -35,6 +36,7 @@ ALLOWED_FUNCTIONS = frozenset(
         "symbol_select",  # adds a symbol to Market Watch so history can load; not a trade
         "copy_rates_range",
         "copy_ticks_range",
+        "history_deals_get",  # reads closed deals only; it cannot open, change or close anything
     }
 )
 _ALLOWED_CONSTANT_PREFIXES = ("TIMEFRAME_", "COPY_TICKS_", "ACCOUNT_TRADE_MODE_")
@@ -224,3 +226,33 @@ class MT5Gateway:
         else:
             df["time_utc"] = clock.server_epoch_to_utc(df["time"].to_numpy())
         return df[QUOTE_COLUMNS].reset_index(drop=True)
+
+    def deals(self, start: datetime, end: datetime) -> pd.DataFrame:
+        """Closed deals in [start, end) as UTC rows (read-only history; used only when observation is enabled)."""
+        self._require()
+        clock = self._need_clock()
+        s, e = self._server_window(clock, start, end)
+        raw = self._mt5.history_deals_get(s, e)
+        if raw is None:
+            code, _ = self._error()
+            raise GatewayError(f"history_deals_get failed (error {code})")
+        rows = [
+            {
+                "ticket": int(d.ticket),
+                "position_id": int(d.position_id),
+                "time_msc": int(d.time_msc),
+                "symbol": str(d.symbol),
+                "type": int(d.type),
+                "entry": int(d.entry),
+                "volume": float(d.volume),
+                "price": float(d.price),
+                "profit": float(d.profit) + float(getattr(d, "commission", 0.0)) + float(getattr(d, "swap", 0.0)),
+            }
+            for d in raw
+        ]
+        if not rows:
+            return pd.DataFrame(columns=DEAL_COLUMNS)
+        df = pd.DataFrame(rows)
+        secs, ms = df["time_msc"] // 1000, df["time_msc"] % 1000
+        df["time_utc"] = clock.server_epoch_to_utc(secs.to_numpy()) + pd.to_timedelta(ms.to_numpy(), unit="ms")
+        return df[DEAL_COLUMNS]

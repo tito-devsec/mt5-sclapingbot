@@ -12,6 +12,7 @@ from mt5bot.core.types import InstrumentSpec, Timeframe
 
 BAR_COLUMNS = ["time_utc", "open", "high", "low", "close", "tick_volume", "spread_points", "real_volume"]
 QUOTE_COLUMNS = ["time_utc", "bid", "ask"]
+DEAL_COLUMNS = ["ticket", "position_id", "symbol", "type", "entry", "volume", "price", "profit", "time_utc"]
 
 
 @dataclass(frozen=True)
@@ -74,3 +75,4 @@ class MarketGateway(Protocol):
         ...
 
     def quotes(self, broker_symbol: str, start: datetime, end: datetime) -> pd.DataFrame: ...
+    def deals(self, start: datetime, end: datetime) -> pd.DataFrame: ...

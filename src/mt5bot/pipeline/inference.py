@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from mt5bot.agent.core import LearnReport, TradingAgent
 from mt5bot.backtest.simulator import estimated_cost_r
 from mt5bot.config.settings import Settings
 from mt5bot.core.errors import ModelUnavailableError
@@ -39,6 +40,7 @@ from mt5bot.storage.repositories import (
     iso,
 )
 from mt5bot.strategies.specialists import build_strategies
+from mt5bot.strategies.techniques import TechniqueSet
 
 log = logging.getLogger(__name__)
 META_KIND = "meta_label"
@@ -76,7 +78,12 @@ class ResearchPipeline:
         self.registry = ModelRegistry(conn, settings.storage.model_dir)
         self.risk = RiskEngine(settings.risk)
         self.events = EventRiskFilter(conn, settings.news, settings.risk)
-        self.strategies = build_strategies(list(settings.strategy.enabled), settings.strategy.max_hold_minutes)
+        self.strategies: list[Any] = build_strategies(
+            list(settings.strategy.enabled), settings.strategy.max_hold_minutes
+        )
+        if settings.selection.mode == "agent":
+            self.strategies = [TechniqueSet(list(settings.agent.hold_minutes))]
+        self.agent = TradingAgent(conn, settings)
         self.cfg_hash = config_hash(settings)
         self._model_cache: tuple[str, FittedMetaModel] | None = None
 
@@ -210,16 +217,28 @@ class ResearchPipeline:
             b["news"] = news_flag
             return self.perf.get(b)
 
-        result = select(
-            cands,
-            regime=regime,
-            data_ok=data_ok,
-            suspended=suspended,
-            stats_for=stats_for,
-            cfg=self.s.selection,
-            model=model,
-            model_input=model_input,
-        )
+        if self.s.selection.mode == "agent":
+            result = self.agent.select(
+                cands,
+                features=feats_dict,
+                regime=regime,
+                symbol=symbol,
+                timeframe=tf.value,
+                at=decision_time.to_pydatetime(),
+                data_ok=data_ok,
+                suspended=suspended,
+            )
+        else:
+            result = select(
+                cands,
+                regime=regime,
+                data_ok=data_ok,
+                suspended=suspended,
+                stats_for=stats_for,
+                cfg=self.s.selection,
+                model=model,
+                model_input=model_input,
+            )
         status = result.status
         risk_records: list[dict[str, Any]] = []
         chosen = cands.iloc[result.chosen] if result.chosen is not None else None
@@ -347,6 +366,21 @@ class ResearchPipeline:
             model_id,
         )
 
+    def learn(self, now: pd.Timestamp) -> LearnReport:
+        """Evaluate matured outcomes, then let the agent learn from them (episodes, skills, lessons, playbook)."""
+        from mt5bot.memory.outcomes import evaluate_pending
+
+        evaluate_pending(
+            self.conn,
+            spec_for=self.specs,
+            costs_for=lambda sym: cost_model(self.s, sym),
+            sizing=sizing(self.s),
+            selection=self.s.selection,
+            now=now,
+            feature_cfg=self.fcfg,
+        )
+        return self.agent.learn(now)
+
     def recommend(
         self, symbol: str, tf: Timeframe, *, mode: str, now: datetime, account: AccountSnapshot | None = None
     ) -> DecisionRecord | None:
@@ -379,7 +413,6 @@ class ResearchPipeline:
         on_progress: Any = None,
     ) -> dict[str, int]:
         """Walk forward through history, evaluating outcomes on the replay clock so memory never sees the future."""
-        from mt5bot.memory.outcomes import evaluate_pending
 
         feats = self.feature_frame(symbol, tf, start, end)
         regimes = classify_rules(feats)["regime"]
@@ -393,26 +426,10 @@ class ResearchPipeline:
         for k, i in enumerate(np.flatnonzero(fired)):
             t = pd.Timestamp(feats["available_at"].iloc[i])
             if k % evaluate_every == 0:
-                evaluate_pending(
-                    self.conn,
-                    spec_for=self.specs,
-                    costs_for=lambda sym: cost_model(self.s, sym),
-                    sizing=sizing(self.s),
-                    selection=self.s.selection,
-                    now=t,
-                    feature_cfg=self.fcfg,
-                )
+                self.learn(t)
             rec = self.decide(feats, int(i), symbol, tf, mode=mode, decided_at=t)
             counts[rec.status.value] = counts.get(rec.status.value, 0) + 1
             if on_progress:
                 on_progress(k)
-        evaluate_pending(
-            self.conn,
-            spec_for=self.specs,
-            costs_for=lambda sym: cost_model(self.s, sym),
-            sizing=sizing(self.s),
-            selection=self.s.selection,
-            now=pd.Timestamp(end),
-            feature_cfg=self.fcfg,
-        )
+        self.learn(pd.Timestamp(end))
         return counts

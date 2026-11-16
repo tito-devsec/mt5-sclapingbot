@@ -96,3 +96,12 @@ def default_spec(symbol: str) -> InstrumentSpec:
     if quote == "JPY":
         return InstrumentSpec(symbol, base, quote, 0.001, 3, 100_000.0)
     return InstrumentSpec(symbol, base, quote, 0.00001, 5, 100_000.0)
+
+
+def research_label(status: str, direction: str | None) -> str:
+    """Human-facing research label for a decision; never an order instruction."""
+    if status == "RECOMMEND":
+        return "BUY_CANDIDATE" if direction == "LONG" else "SELL_CANDIDATE"
+    return {"REJECTED": "RISK_REJECTED", "NO_TRADE": "NO_TRADE", "UNCERTAIN": "UNCERTAIN"}.get(
+        status, "DATA_UNAVAILABLE"
+    )

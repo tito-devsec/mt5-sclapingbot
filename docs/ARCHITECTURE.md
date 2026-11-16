@@ -72,6 +72,8 @@ flowchart TD
 | `monitor/` | Observe-only loop with per-cycle account validation, graceful shutdown and bridge sync |
 | `bridge/` | CSV exchange with the MQL5 components: export decisions, levels and status; import tick verdicts and tick files |
 | `backtest/ticks.py` | First-touch resolution of bars that hit both stop and target, from stored ticks or EA verdicts |
+| `agent/` | Learning agent: skill book, recall (RAG), playbook cache (CAG), online model, lessons, user-trade study |
+| `memory/vector.py`, `memory/embed.py` | Vector stores (pgvector, SQLite) and embeddings |
 | `mql5/` | Chart indicator, observer EA and tick-export script (see `docs/MT5_INTEGRATION.md`) |
 | `reporting/` | Text status, static HTML report, CSV export |
 | `cli.py` | `mt5bot` entry point |
@@ -97,5 +99,6 @@ Each row in `decisions` stores:
 | `0002_instrument_specs` | Broker contract specs captured during collection |
 | `0003_candidate_outcomes` | Candidate trade geometry and counterfactual outcomes |
 | `0004_tick_resolutions` | Tick-level stop/target first-touch verdicts, plus a quotes time index |
+| `0005_agent_memory` | Skills, skill events, episodes, vectors (SQLite backend), lessons, playbook cache, user trades |
 
 Migrations run automatically when a database is opened. A backup of a non-empty database is written first (`*.pre-vNNNN-*.bak`).

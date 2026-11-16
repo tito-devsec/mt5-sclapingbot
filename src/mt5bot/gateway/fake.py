@@ -12,7 +12,7 @@ import pandas as pd
 
 from mt5bot.core.errors import GatewayError, TerminalUnavailableError
 from mt5bot.core.types import Timeframe
-from mt5bot.gateway.base import BAR_COLUMNS, QUOTE_COLUMNS, AccountSnapshot, SymbolMeta, TerminalStatus
+from mt5bot.gateway.base import BAR_COLUMNS, DEAL_COLUMNS, QUOTE_COLUMNS, AccountSnapshot, SymbolMeta, TerminalStatus
 
 
 def demo_account(currency: str = "USD", is_demo: bool = True) -> AccountSnapshot:
@@ -49,6 +49,7 @@ class FakeGateway:
     symbol_list: list[SymbolMeta] = field(default_factory=lambda: list(DEFAULT_SYMBOLS))
     bar_data: dict[tuple[str, Timeframe], pd.DataFrame] = field(default_factory=dict)
     quote_data: dict[str, pd.DataFrame] = field(default_factory=dict)
+    deal_data: pd.DataFrame | None = None
     terminal_running: bool = True
     fail_bars_times: int = 0
     connected: bool = False
@@ -95,6 +96,13 @@ class FakeGateway:
         m = (df["time_utc"] >= pd.Timestamp(start)) & (df["time_utc"] < pd.Timestamp(end))
         return df.loc[m, BAR_COLUMNS].reset_index(drop=True)
 
+    def deals(self, start: datetime, end: datetime) -> pd.DataFrame:
+        self._require()
+        if self.deal_data is None:
+            return pd.DataFrame(columns=DEAL_COLUMNS)
+        m = (self.deal_data["time_utc"] >= pd.Timestamp(start)) & (self.deal_data["time_utc"] < pd.Timestamp(end))
+        return self.deal_data.loc[m, DEAL_COLUMNS].reset_index(drop=True)
+
     def quotes(self, broker_symbol: str, start: datetime, end: datetime) -> pd.DataFrame:
         self._require()
         df = self.quote_data.get(broker_symbol)
@@ -119,6 +127,7 @@ class FakeMT5Module:
         self.init_ok = init_ok
         self.offset = server_offset_hours * 3600
         self.rates: dict[tuple[str, int], np.ndarray] = {}
+        self.deals: list[Any] = []
         self.init_kwargs: dict[str, Any] = {}
 
     def initialize(self, **kwargs: Any) -> bool:
@@ -206,6 +215,10 @@ class FakeMT5Module:
     def copy_ticks_range(self, symbol: str, start: datetime, end: datetime, flags: int) -> np.ndarray:
         dt = np.dtype([("time", "<i8"), ("bid", "<f8"), ("ask", "<f8"), ("time_msc", "<i8")])
         return np.zeros(0, dtype=dt)
+
+    def history_deals_get(self, start: datetime, end: datetime) -> tuple[Any, ...]:
+        s, e = int(start.timestamp()) * 1000, int(end.timestamp()) * 1000
+        return tuple(d for d in self.deals if s <= d.time_msc < e)
 
     # Trading functions exist on the real module; the fake makes reaching them fatal.
     def _forbidden(self, *a: Any, **k: Any) -> Any:

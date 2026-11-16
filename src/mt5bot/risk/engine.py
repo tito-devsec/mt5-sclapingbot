@@ -101,6 +101,7 @@ class RiskEngine:
             self._reward_risk,
             self._size,
             self._daily_loss,
+            self._daily_target,
             self._drawdown,
             self._streak,
             self._positions,
@@ -186,6 +187,12 @@ class RiskEngine:
         if -ctx.daily_pnl_usd >= limit:
             return CheckResult("RISK_DAILY_LOSS_LIMIT", False, f"daily loss {-ctx.daily_pnl_usd:.2f} >= {limit:.2f}")
         return CheckResult("DAILY_LOSS_OK", True, "")
+
+    def _daily_target(self, c: RiskCandidate, ctx: RiskContext) -> CheckResult:
+        target = self.s.daily_profit_target_usd
+        if self.s.stop_after_daily_target and target > 0 and ctx.daily_pnl_usd >= target:
+            return CheckResult("RISK_DAILY_TARGET_REACHED", False, f"daily goal {target:.2f} reached; done for today")
+        return CheckResult("DAILY_TARGET_OK", True, "")
 
     def _drawdown(self, c: RiskCandidate, ctx: RiskContext) -> CheckResult:
         if ctx.equity_usd is None or ctx.peak_equity_usd is None:

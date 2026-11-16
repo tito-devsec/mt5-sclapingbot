@@ -39,7 +39,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Pinned versions from requirements-lock.txt, so CI tests exactly what the lock file promises.
-          python -m pip install -e ".[dev,boost,regime,online,tuning,explain,uncertainty]" -c requirements-lock.txt
+          python -m pip install -e ".[dev,boost,regime,online,tuning,explain,uncertainty,pg,agent]" -c requirements-lock.txt
           ruff check src tests
           mypy src
           python -m pytest -q

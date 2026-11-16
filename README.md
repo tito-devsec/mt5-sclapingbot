@@ -27,6 +27,7 @@
 - [Installation (Windows PowerShell)](#installation-windows-powershell)
 - [Configuration](#configuration)
 - [Usage](#usage)
+- [The learning agent](#the-learning-agent)
 - [Machine learning](#machine-learning)
 - [Testing and validation](#testing-and-validation)
 - [Risk disclosures](#risk-disclosures)
@@ -46,6 +47,7 @@
 | Phases 13–16: news, optional LLM adapter, decision memory, drift detection | ✅ Done; news feeds verified live |
 | Phases 17–19: pipeline, observe-only monitor, CLI, reports, safety, docs | ✅ Done, tested offline |
 | MT5 chart and tick integration (MQL5 indicator, observer EA, tick export, Python bridge) | ✅ Built. Python side tested; MQL5 statically checked; **not yet compiled in MetaEditor** |
+| Learning agent: vector memory (pgvector or SQLite), RAG, cached playbook, skill book, online model, daily lessons | ✅ Built and tested offline; pgvector tested on a real database. **Not yet run on real market data** |
 | Live verification on your PC (terminal, demo account, real history, MQL5 compile) | ⏳ Next |
 | Phase 20: demo forward observation | ⏳ After live verification |
 | Live trading | ⛔ Out of scope; it would need a separate review and your authorization |
@@ -78,8 +80,8 @@ Configured for the JustMarkets **demo** account, the USD reference currency, EUR
 | **MT5 chart display** | Implemented · **not compiled yet** | `mql5/Indicators/MT5Bot/MT5Bot_Decisions.mq5` | Decision arrows, SL/TP/entry lines, tick-verdict markers, status panel. |
 | **Live SL/TP first-touch resolution** | Implemented · **not compiled yet** | `mql5/Experts/MT5Bot/MT5Bot_Observer.mq5` | Every tick checked; longs exit on bid, shorts on ask. |
 | Tick-resolved backtests and outcomes | Implemented | `backtest/ticks.py`, `memory/outcomes.py` | Bars touching both stop and target are settled by ticks; otherwise stop-first and flagged. |
-| SQLite storage and migrations | Implemented | `storage/` | 4 migrations, WAL, constraints, automatic backup before upgrades. |
-| Feature engineering | Implemented | `features/pipeline.py` | 44 documented features ([docs/FEATURES.md](docs/FEATURES.md)), tested for look-ahead. |
+| SQLite storage and migrations | Implemented | `storage/` | 5 migrations, WAL, constraints, automatic backup before upgrades. |
+| Feature engineering | Implemented | `features/pipeline.py` | 55 documented features ([docs/FEATURES.md](docs/FEATURES.md)), tested for look-ahead. |
 | GARCH volatility forecast | Implemented (research) | `features/garch.py` | Causal; not in the default feature set. |
 | Rule-based regime detection | Implemented | `regime/rules.py` | Returns `UNCERTAIN` for missing or out-of-distribution inputs. |
 | HMM regimes and change-point audit | Implemented (research) | `regime/hmm.py`, `regime/changepoints.py` | Not wired into decisions. |
@@ -92,6 +94,12 @@ Configured for the JustMarkets **demo** account, the USD reference currency, EUR
 | Hyper-parameter tuning and SHAP | Implemented | `ml/tuning.py`, `ml/explain.py` | Validation folds only; every trial is counted. |
 | Rules-based selection (**current default**) | Implemented | `selection/selector.py` | `selection.mode = "rules"`: a rule-eligible candidate goes to the risk engine; memory vetoes proven losers. No ML model is used. |
 | Adaptive / ML selection (for later) | Implemented, not default | `selection/selector.py` | `mode = "evidence"` (performance-memory LCB) or `mode = "ml"` (champion probability + conformal abstention). |
+| **Learning agent** (`selection.mode = "agent"`) | Implemented · not run on real data | `agent/` | Recommends only skills confirmed on fresh outcomes, checked against similar past episodes. See [docs/AGENT.md](docs/AGENT.md). |
+| Vector memory, RAG and CAG | Implemented | `memory/vector.py`, `agent/recall.py`, `agent/knowledge.py` | pgvector (HNSW) or SQLite; time-aware retrieval; cached playbook. No language model per decision. |
+| Skill book and catalogue | Implemented | `agent/skills.py`, `agent/catalogue.py` | 120 technique variants observed per context; [docs/SKILLS.md](docs/SKILLS.md) lists 108 implemented capabilities and 119 planned. |
+| Candlestick, swing structure and trendline features | Implemented | `features/structure.py` | Engulfing, pin bar, doji, inside bar; confirmed swing levels; structure trend; trendline. |
+| Online learning | Implemented | `agent/recall.py` | river model updated after each outcome; used only while it beats the base rate. |
+| Learning from your own closed trades | Implemented · opt-in · not verified live | `agent/user_trades.py` | Read-only; off by default; never copied, modified or shared. |
 | Contextual bandit | Implemented (offline only) | `selection/bandit.py` | LinUCB replay with delayed rewards; not in the decision path. |
 | Concept-drift detection | Implemented | `drift/` | PSI, chi-square, Brier, Page-Hinkley + ADWIN, feed staleness, spread shift. |
 | Persistent decision memory | Implemented | `memory/outcomes.py`, `storage/` | Abstentions and rejections recorded; counterfactual candidate outcomes; rule-based attribution. |
@@ -103,7 +111,6 @@ Configured for the JustMarkets **demo** account, the USD reference currency, EUR
 | Optional LLM research adapter | Implemented · not verified live | `llm/` | Off by default; schema-validated; cost cap; no trading authority. |
 | Demo monitoring (observe-only) | Implemented · not verified live | `monitor/service.py` | Account re-validated every cycle; chart bridge synced every cycle. |
 | Reporting | Implemented | `reporting/report.py` | CLI status, HTML and CSV, labelled SIMULATED / HISTORICAL / OBSERVED_DEMO. |
-| Online learning | Not implemented by design | — | Retraining goes through the gated registry. |
 | Deep learning (PyTorch / ONNX), MLflow | Planned | — | Optional extras declared; no code uses them yet. |
 | Order execution | **Not implemented, out of scope** | — | Enforced by `tests/safety/` for Python **and** MQL5. |
 
@@ -158,11 +165,13 @@ Versions are those installed in the test environment (Python 3.12.3). `requireme
 | hmmlearn | 0.3.3 | `regime` | Gaussian HMM regime discovery (research) | `regime/hmm.py` |
 | ruptures | 1.1.10 | `regime` | Offline change-point audit of regime labels | `regime/changepoints.py` |
 | arch | 8.0.0 | `regime` | Causal GARCH(1,1) volatility forecasts | `features/garch.py` |
-| river | 0.26.1 | `online` | ADWIN drift detector, confirming Page-Hinkley alerts | `drift/detectors.py` |
+| river | 0.26.1 | `online` | ADWIN drift detector; the agent's online model updated after every outcome | `drift/detectors.py`, `agent/recall.py` |
 | optuna | 5.0.0 | `tuning` | Hyper-parameter search on validation folds only | `ml/tuning.py` |
 | shap | 0.54.1 | `explain` | Global and per-decision feature attributions for tree models | `ml/explain.py` |
 | MAPIE | 1.6.0 | `uncertainty` | Reference implementation that verifies our conformal prediction sets (test) | `tests/unit/test_ml_selection_risk.py` |
 | imbalanced-learn | 0.14.2 | `uncertainty` | Optional undersampling of fitting rows only | `ml/training.py` |
+| psycopg / pgvector | 3.3.9 / 0.5.1 | `pg` | PostgreSQL client and vector type for the agent's pgvector memory | `memory/vector.py` |
+| langgraph | 1.2.22 | `agent` | Runs the agent's learning cycle as a state graph (plain steps are used without it) | `agent/core.py` |
 | anthropic | 2.x | `llm` | Optional research adapter (summaries and explanations only) | `llm/adapter.py` |
 | pytest / hypothesis | 9.2.0 / 6.170.13 | `dev` | Test suite and property-based risk-engine test | `tests/` |
 | ruff / mypy | 0.17.3 / 2.4.1 | `dev` | Lint, format and type checks (CI) | `pyproject.toml` |
@@ -302,6 +311,7 @@ mt5bot recommend --symbol EURUSD --timeframe M5 --observe         # one OBSERVED
 mt5bot monitor start                                              # observe-only loop; syncs the MT5 charts each cycle
 mt5bot bridge export | import | path                              # manual chart/EA exchange
 mt5bot verify                                                     # rules-based trades the EA resolved on live ticks
+mt5bot agent status | skills | events | lessons | learn           # the learning agent (see docs/AGENT.md)
 mt5bot outcomes
 mt5bot drift --symbol EURUSD --timeframe M1
 mt5bot models list | history | show --id <id> | rollback
@@ -311,6 +321,19 @@ mt5bot report                                                     # reports/repo
 ```
 
 Exit codes: `0` ok, `1` runtime error, `2` validation failure (configuration, account, symbol, time zone).
+
+## The learning agent
+
+The full guide is [docs/AGENT.md](docs/AGENT.md). Turn it on with `selection.mode = "agent"`.
+
+- **Memory.** Every evaluated outcome becomes an episode with a market-state vector, stored in PostgreSQL + pgvector or in SQLite.
+- **RAG.** Before each decision the agent retrieves similar past situations that were already known at that moment.
+- **CAG.** Validated skills and recent lessons are precomputed into a cached playbook.
+- **Skills.** Ten entry rules × stop/target/hold profiles are observed in every market context. A skill is recommended only after it is discovered **and** confirmed on fresh outcomes, and it is retired when it stops working.
+- **Self-learning.** An online model updates after each outcome, and daily lessons are written from the evidence.
+- **Your trades.** With your opt-in, it studies your own closed trades, read-only.
+
+What it is not: it does not place orders, and it cannot promise results. The $100 daily goal is reported, never enforced. The 2% daily loss limit is a hard stop. On real data it may validate few skills, or none.
 
 ## Machine learning
 
@@ -328,7 +351,7 @@ In brief:
 
 | Check | Result |
 |---|---|
-| `python -m pytest -q` (Linux, Python 3.12.3) | **278 passed**. MT5 is faked; synthetic and fixture data only. |
+| `python -m pytest -q` (Linux, Python 3.12.3) | **323 passed**, including pgvector tests against a real PostgreSQL. MT5 is faked; synthetic and fixture data only. |
 | GitHub Actions CI (Windows + Ubuntu, Python 3.12) | **Passed** on commit `6d0b0c8`. It re-runs on every push. |
 | `ruff check` / `ruff format --check` / `mypy src` | clean |
 | Live RSS fetch (Fed, ECB, BoE) | fetched and parsed successfully |

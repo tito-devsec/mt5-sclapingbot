@@ -14,7 +14,7 @@ import pandas as pd
 from mt5bot.config.settings import Settings, load_settings
 from mt5bot.core.errors import ConfigError, Mt5BotError
 from mt5bot.core.logging import configure_logging, register_settings_secrets
-from mt5bot.core.types import Timeframe, utc_now
+from mt5bot.core.types import Timeframe, research_label, utc_now
 
 EXIT_OK, EXIT_ERROR, EXIT_VALIDATION = 0, 1, 2
 
@@ -295,9 +295,10 @@ def cmd_recommend(s: Settings, a: argparse.Namespace) -> int:
     at = (_ts(a.at) if not a.observe else None) or utc_now()
     rec = ResearchPipeline(conn, s).recommend(a.symbol, Timeframe(a.timeframe), mode=mode, now=at, account=account)
     if rec is None:
-        print("no closed bars available; collect data first")
+        print("[DATA_UNAVAILABLE] no closed bars available; collect data first")
         return EXIT_VALIDATION
-    print(f"[{rec.status.value}] {rec.symbol} {rec.timeframe} bar {rec.bar_time} regime={rec.regime}")
+    label = research_label(rec.status.value, rec.direction)
+    print(f"[{label}] {rec.symbol} {rec.timeframe} bar {rec.bar_time} regime={rec.regime}")
     if rec.strategy:
         print(f"  candidate: {rec.strategy} {rec.direction}")
     print(f"  rationale: {rec.rationale}")
@@ -521,6 +522,78 @@ def cmd_verify(s: Settings, a: argparse.Namespace) -> int:
     return EXIT_OK if done >= 2 else EXIT_VALIDATION
 
 
+def cmd_agent(s: Settings, a: argparse.Namespace) -> int:
+    from mt5bot.pipeline.inference import ResearchPipeline
+
+    if a.action == "catalogue":
+        from mt5bot.agent.catalogue import catalogue_markdown, counts
+
+        md = catalogue_markdown()
+        if a.out:
+            Path(a.out).write_text(md, encoding="utf-8")
+            print(f"wrote {a.out}: {counts()[0]} implemented, {counts()[1]} planned")
+        else:
+            print(md)
+        return EXIT_OK
+    conn = _db(s)
+    pipe = ResearchPipeline(conn, s)
+    agent = pipe.agent
+    if a.action == "learn":
+        rep = pipe.learn(pd.Timestamp(utc_now()))
+        print(
+            f"learned {rep.episodes} new outcomes, wrote {rep.lessons} lessons, playbook updated: "
+            f"{rep.playbook_updated} (cycle engine: {rep.engine})"
+        )
+        print(f"skills: {rep.skills}")
+    elif a.action == "status":
+        st = agent.status()
+        _print(st)
+        print(
+            f"NOTE: the daily goal of {st['daily_target_usd']:g} USD equals {st['target_in_r_per_day']} times the "
+            f"risk taken per trade ({st['risk_per_trade_usd']:g} USD). It is an aspiration for reporting, not an "
+            "expectation, and it never changes position size or forces a trade."
+        )
+    elif a.action == "skills":
+        for r in agent.book.top(a.limit, a.state):
+            print(
+                f"{r['state']:12} {r['technique']:34} {r['symbol']} {r['timeframe']:3} {r['regime']:18} "
+                f"{r['session']:16} n={r['n']:4} mean={r['mean_reward']:+.3f}R"
+            )
+        print(f"totals: {agent.book.counts()}")
+    elif a.action == "events":
+        for e in agent.book.events(a.limit):
+            print(
+                f"{e['at'][:16]} {e['from_state']} -> {e['to_state']}: {e['technique']} {e['symbol']} "
+                f"{e['timeframe']} {e['regime']} {e['session']} :: {e['reason']}"
+            )
+    elif a.action == "lessons":
+        if a.query:
+            for h in agent.recall_lessons(a.query, a.limit):
+                print(f"{h.similarity:.2f}  {h.metadata['text']}")
+        else:
+            for r in conn.execute("SELECT text FROM lessons ORDER BY id DESC LIMIT ?", (a.limit,)).fetchall():
+                print(r["text"])
+    elif a.action == "import-trades":
+        from mt5bot.agent.user_trades import import_user_trades
+        from mt5bot.gateway.account import require_valid_account
+
+        if not s.agent.observe_user_trades:
+            print("observation of your own trades is off; set agent.observe_user_trades = true to opt in")
+            return EXIT_VALIDATION
+        gw = _gateway(s)
+        gw.connect()
+        try:
+            require_valid_account(gw.account(), s.mt5.expected_currency)
+            rep_u = import_user_trades(gw, conn, s, agent, pipe, utc_now())
+        finally:
+            gw.disconnect()
+        print(
+            f"closed trades found={rep_u.trades_found} stored={rep_u.trades_stored} "
+            f"added to memory={rep_u.episodes_added} skipped (no bars)={rep_u.skipped_no_bars}"
+        )
+    return EXIT_OK
+
+
 def cmd_llm_explain(s: Settings, a: argparse.Namespace) -> int:
     from mt5bot.llm.adapter import ResearchAdapter
     from mt5bot.storage.repositories import DecisionRepository
@@ -614,6 +687,13 @@ def build_parser() -> argparse.ArgumentParser:
     br.set_defaults(fn=cmd_bridge)
     vf = sub.add_parser("verify", help="show rules-based trades the observer EA resolved on live ticks (no orders)")
     vf.set_defaults(fn=cmd_verify)
+    ag = sub.add_parser("agent", help="the learning agent: memory, skills, lessons")
+    ag.add_argument("action", choices=["status", "learn", "skills", "events", "lessons", "catalogue", "import-trades"])
+    ag.add_argument("--limit", type=int, default=20)
+    ag.add_argument("--state", choices=["EXPERIMENTAL", "PROBATION", "VALIDATED", "RETIRED"])
+    ag.add_argument("--query", help="text to search lessons for")
+    ag.add_argument("--out")
+    ag.set_defaults(fn=cmd_agent)
     tk = sub.add_parser("ticks", help="collect ticks through the Python MT5 API")
     tk.add_argument("action", choices=["collect", "ambiguous"])
     tk.add_argument("--symbol", required=True)

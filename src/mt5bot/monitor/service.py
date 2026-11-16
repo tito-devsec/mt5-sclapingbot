@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
+from mt5bot.agent.user_trades import import_user_trades
 from mt5bot.bridge.service import sync
 from mt5bot.config.settings import Settings
 from mt5bot.core.errors import AccountValidationError, Mt5BotError
@@ -23,9 +24,7 @@ from mt5bot.gateway.base import MarketGateway
 from mt5bot.gateway.clock import ServerClock
 from mt5bot.ingest.collector import Collector
 from mt5bot.ingest.quality import is_weekend_gap
-from mt5bot.memory.outcomes import evaluate_pending
 from mt5bot.news.service import build_registry, refresh
-from mt5bot.pipeline.context import cost_model, sizing
 from mt5bot.pipeline.inference import ResearchPipeline
 from mt5bot.storage.repositories import BarRepository
 
@@ -39,6 +38,7 @@ class MonitorStats:
     errors: int = 0
     stopped_reason: str = ""
     bridge_files: int = 0
+    user_trades: int = 0
     tick_resolutions: int = 0
 
 
@@ -90,18 +90,17 @@ class DemoMonitor:
                         rec = self.pipeline.recommend(sym, tf, mode="OBSERVED_DEMO", now=now, account=account)
                         if rec is not None and rec.id is not None:
                             stats.decisions[rec.status.value] = stats.decisions.get(rec.status.value, 0) + 1
-                    evaluate_pending(
-                        self.conn,
-                        spec_for=self.pipeline.specs,
-                        costs_for=lambda x: cost_model(self.s, x),
-                        sizing=sizing(self.s),
-                        selection=self.s.selection,
-                        now=pd.Timestamp(now),
-                        feature_cfg=self.pipeline.fcfg,
-                    )
+                    self.pipeline.learn(pd.Timestamp(now))
             except Mt5BotError as exc:
                 stats.errors += 1
                 log_event(log, logging.ERROR, "monitor cycle failed", code=exc.code)
+            if self.s.agent.observe_user_trades and self.clock is not None:
+                try:
+                    seen = import_user_trades(self.gw, self.conn, self.s, self.pipeline.agent, self.pipeline, now)
+                    stats.user_trades += seen.episodes_added
+                except Mt5BotError as exc:  # observation is optional and must never stop monitoring
+                    stats.errors += 1
+                    log_event(log, logging.WARNING, "user-trade observation failed", code=exc.code)
             if self.clock is not None and self.s.bridge.enabled:
                 try:
                     rep = sync(self.conn, self.s, self.clock, pd.Timestamp(now))

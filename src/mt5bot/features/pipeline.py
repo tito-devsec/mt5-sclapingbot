@@ -11,8 +11,9 @@ import pandas as pd
 
 from mt5bot.core.types import Timeframe
 from mt5bot.features import indicators as ind
+from mt5bot.features import structure
 
-FEATURE_SET_VERSION = "1.0.0"
+FEATURE_SET_VERSION = "1.1.0"
 
 HIGHER_TF: dict[Timeframe, Timeframe | None] = {
     Timeframe.M1: Timeframe.M5,
@@ -121,6 +122,61 @@ def _specs(cfg: FeatureConfig) -> list[FeatureSpec]:
     )
     specs += [
         S(
+            "cs_bull_engulf",
+            "candlestick",
+            "1 if a bullish bar engulfs the previous bearish body",
+            1,
+            ("open", "close"),
+        ),
+        S(
+            "cs_bear_engulf",
+            "candlestick",
+            "1 if a bearish bar engulfs the previous bullish body",
+            1,
+            ("open", "close"),
+        ),
+        S(
+            "cs_pin_bull",
+            "candlestick",
+            "1 if lower wick >= 2x body and >= 60% of range",
+            0,
+            ("open", "high", "low", "close"),
+        ),
+        S(
+            "cs_pin_bear",
+            "candlestick",
+            "1 if upper wick >= 2x body and >= 60% of range",
+            0,
+            ("open", "high", "low", "close"),
+        ),
+        S("cs_doji", "candlestick", "1 if body <= 10% of range", 0, ("open", "high", "low", "close")),
+        S("cs_inside", "candlestick", "1 if the bar is inside the previous bar's range", 1, ("high", "low")),
+        S(
+            "sr_res_dist_atr",
+            "structure",
+            "(last confirmed swing high - close)/ATR14; swings confirm 3 bars later",
+            14,
+            ("high", "close"),
+        ),
+        S(
+            "sr_sup_dist_atr",
+            "structure",
+            "(close - last confirmed swing low)/ATR14; swings confirm 3 bars later",
+            14,
+            ("low", "close"),
+        ),
+        S(
+            "struct_trend",
+            "structure",
+            "+1 higher swing high and low, -1 lower high and low, else 0",
+            14,
+            ("high", "low"),
+        ),
+        S("tl_slope_atr", "structure", "least-squares slope of the last 30 closes per bar / ATR14", 29, ("close",)),
+        S("tl_dev_atr", "structure", "(close - 30-bar trendline value)/ATR14", 29, ("close",)),
+    ]
+    specs += [
+        S(
             "htf_ema_20_50_atr",
             "cross_tf",
             "higher-TF (EMA20-EMA50)/ATR14 of the last CLOSED higher bar",
@@ -213,6 +269,8 @@ def _single_tf(bars: pd.DataFrame, point: float, cfg: FeatureConfig) -> pd.DataF
         since = minute_of_day - start * 60
         opened |= (since >= 0) & (since < 30)
     f["session_open_30m"] = opened.astype(float)
+    f = pd.concat([f, structure.candlesticks(o, h, lo, c), structure.swing_structure(h, lo, c, a)], axis=1)
+    f = pd.concat([f, structure.trendline(c, a)], axis=1)
     return f
 
 

@@ -134,8 +134,8 @@ class EvaluationSettings(_Strict):
 
 
 class SelectionSettings(_Strict):
-    # rules: rule-eligible candidates go to the risk engine; evidence: needs performance memory; ml: champion model.
-    mode: Literal["rules", "evidence", "ml"] = "rules"
+    # rules: strategy rules; evidence: performance memory; ml: champion model; agent: learned skills + memory recall.
+    mode: Literal["rules", "evidence", "ml", "agent"] = "rules"
     rules_memory_veto: bool = True
     min_samples: int = Field(default=30, ge=1)
     lcb_z: float = Field(default=1.0, ge=0, le=5)
@@ -164,6 +164,9 @@ class RiskSettings(_Strict):
     event_window_after_minutes: int = Field(default=15, ge=0)
     # Conservative default: unknown news state (stale/failed feeds) blocks new recommendations.
     block_on_stale_news: bool = True
+    # An aspirational daily goal used for reporting only; it never forces, sizes or widens a trade.
+    daily_profit_target_usd: float = Field(default=100.0, ge=0)
+    stop_after_daily_target: bool = False
     emergency_disable: bool = False
 
     @model_validator(mode="after")
@@ -219,6 +222,42 @@ class MonitorSettings(_Strict):
     interval_seconds: int = Field(default=60, ge=5, le=3600)
 
 
+class MemorySettings(_Strict):
+    # sqlite keeps vectors in the main database; pgvector needs PostgreSQL with the vector extension (memory.dsn).
+    backend: Literal["sqlite", "pgvector"] = "sqlite"
+    dsn: SecretStr | None = None
+    top_k: int = Field(default=40, ge=5, le=500)
+    min_neighbors: int = Field(default=10, ge=1)
+    min_similarity: float = Field(default=0.6, ge=-1, le=1)
+    text_dim: int = Field(default=256, ge=32, le=4096)
+
+
+class AgentSettings(_Strict):
+    hold_minutes: list[int] = Field(default_factory=lambda: [30, 60])
+    discovery_min_samples: int = Field(default=30, ge=5)
+    # Measured on simulated skills: z 3.0/1.5 validates about 0.3% of pure noise and 80% of real 0.3R edges.
+    discovery_z: float = Field(default=3.0, ge=0, le=6)
+    confirm_min_samples: int = Field(default=20, ge=5)
+    confirm_z: float = Field(default=1.5, ge=0, le=6)
+    retire_min_samples: int = Field(default=20, ge=5)
+    retire_z: float = Field(default=1.0, ge=0, le=6)
+    retired_cooldown_days: int = Field(default=14, ge=1)
+    online_learner: bool = True
+    online_min_samples: int = Field(default=300, ge=20)
+    online_min_gain: float = Field(default=0.01, ge=0, le=1)
+    online_min_expected_r: float = Field(default=0.0, ge=-1, le=5)
+    # Read-only study of your own closed MT5 trades; off until you opt in. Nothing is ever shared or copied.
+    observe_user_trades: bool = False
+    user_trade_lookback_days: int = Field(default=30, ge=1, le=3650)
+
+    @field_validator("hold_minutes")
+    @classmethod
+    def _check_holds(cls, v: list[int]) -> list[int]:
+        if not v or any(h < 1 or h > 1440 for h in v) or len(set(v)) != len(v):
+            raise ValueError("hold_minutes must be distinct values between 1 and 1440")
+        return v
+
+
 class BridgeSettings(_Strict):
     # File exchange with the MQL5 components; None means <APPDATA>/MetaQuotes/Terminal/Common/Files/mt5bot.
     enabled: bool = True
@@ -254,6 +293,8 @@ class Settings(BaseSettings):
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     monitor: MonitorSettings = Field(default_factory=MonitorSettings)
     bridge: BridgeSettings = Field(default_factory=BridgeSettings)
+    memory: MemorySettings = Field(default_factory=MemorySettings)
+    agent: AgentSettings = Field(default_factory=AgentSettings)
 
     @classmethod
     def settings_customise_sources(

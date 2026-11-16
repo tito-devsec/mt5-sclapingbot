@@ -51,7 +51,7 @@ Sources, highest priority first: environment variables `MT5BOT_<SECTION>__<KEY>`
 | `evaluation.promotion_cost_multiplier` | Promotion gate: expectancy must stay positive at this cost multiple | `float` | `1.5` | >= 1.0 | no |
 | `evaluation.min_positive_fold_share` | Promotion gate: share of walk-forward folds with positive expectancy | `float` | `0.6` | >= 0, <= 1 | no |
 | `evaluation.min_deflated_sharpe_prob` | Promotion gate: minimum deflated-Sharpe probability | `float` | `0.5` | >= 0, < 1 | no |
-| `selection.mode` | rules (default): rule-eligible candidates go to the risk engine; evidence; or ml (champion) | `'rules' \| 'evidence' \| 'ml'` | `rules` | - | no |
+| `selection.mode` | rules (default), evidence, ml (champion model) or agent (validated skills + memory recall) | `'rules' \| 'evidence' \| 'ml' \| 'agent'` | `rules` | - | no |
 | `selection.rules_memory_veto` | In rules mode, let performance memory veto a strategy proven negative after costs | `bool` | `True` | - | no |
 | `selection.min_samples` | Evidence needed before performance memory can qualify or veto a candidate | `int` | `30` | >= 1 | no |
 | `selection.lcb_z` | z-score of the lower confidence bound on mean reward | `float` | `1.0` | >= 0, <= 5 | no |
@@ -76,6 +76,8 @@ Sources, highest priority first: environment variables `MT5BOT_<SECTION>__<KEY>`
 | `risk.event_window_before_minutes` | Block window before a high-impact event | `int` | `30` | >= 0 | no |
 | `risk.event_window_after_minutes` | Block window after a high-impact event / breaking news | `int` | `15` | >= 0 | no |
 | `risk.block_on_stale_news` | Reject when news state is unknown (stale/failed/disabled feeds) | `bool` | `True` | - | no |
+| `risk.daily_profit_target_usd` | Aspirational daily goal for reporting; never forces, sizes or widens a trade | `float` | `100.0` | >= 0 | no |
+| `risk.stop_after_daily_target` | Optionally stop new recommendations for the day once the goal is reached | `bool` | `False` | - | no |
 | `risk.emergency_disable` | Global emergency disable: rejects every candidate | `bool` | `False` | - | no |
 | `news.enabled` | Master switch for news collection | `bool` | `True` | - | no |
 | `news.providers` | RSS providers: id, url, currencies, category, enabled, min_interval_seconds, store_summary | `list[ProviderConfig]` | `[]` | - | no |
@@ -103,3 +105,23 @@ Sources, highest priority first: environment variables `MT5BOT_<SECTION>__<KEY>`
 | `bridge.directory` | Exchange folder; empty uses MT5's Common\Files\mt5bot folder | `Path \| None` | `None` | - | no |
 | `bridge.max_decisions` | Most recent decisions exported per symbol and timeframe for the chart | `int` | `300` | >= 10, <= 5000 | no |
 | `bridge.import_ticks` | Import tick files recorded by the observer EA into the quotes table | `bool` | `True` | - | no |
+| `memory.backend` | Vector memory backend: sqlite (built in) or pgvector (PostgreSQL with the vector extension) | `'sqlite' \| 'pgvector'` | `sqlite` | - | no |
+| `memory.dsn` | PostgreSQL connection string for the pgvector backend | `SecretStr \| None` | (none) | - | **yes** |
+| `memory.top_k` | Similar past episodes retrieved per decision | `int` | `40` | >= 5, <= 500 | no |
+| `memory.min_neighbors` | Similar episodes needed before memory can veto or support a candidate | `int` | `10` | >= 1 | no |
+| `memory.min_similarity` | Cosine similarity below which a past episode is ignored | `float` | `0.6` | >= -1, <= 1 | no |
+| `memory.text_dim` | Dimension of the lesson text embeddings | `int` | `256` | >= 32, <= 4096 | no |
+| `agent.hold_minutes` | Holding-time variants each technique is tested with | `list[int]` | `[30, 60]` | - | no |
+| `agent.discovery_min_samples` | Outcomes needed before an experimental skill can be discovered | `int` | `30` | >= 5 | no |
+| `agent.discovery_z` | Confidence z-score for discovery (lower bound of mean reward must be above 0) | `float` | `3.0` | >= 0, <= 6 | no |
+| `agent.confirm_min_samples` | Fresh outcomes needed to confirm a discovered skill | `int` | `20` | >= 5 | no |
+| `agent.confirm_z` | Confidence z-score for confirmation on fresh outcomes | `float` | `1.5` | >= 0, <= 6 | no |
+| `agent.retire_min_samples` | Outcomes since validation before a skill can be retired | `int` | `20` | >= 5 | no |
+| `agent.retire_z` | Confidence z-score for retirement (upper bound of mean reward below 0) | `float` | `1.0` | >= 0, <= 6 | no |
+| `agent.retired_cooldown_days` | Days before a retired skill may be re-evaluated from scratch | `int` | `14` | >= 1 | no |
+| `agent.online_learner` | Train the online model after every outcome | `bool` | `True` | - | no |
+| `agent.online_min_samples` | Outcomes the online model must see before it can be trusted | `int` | `300` | >= 20 | no |
+| `agent.online_min_gain` | Log-loss improvement over the base rate the online model must hold to be trusted | `float` | `0.01` | >= 0, <= 1 | no |
+| `agent.online_min_expected_r` | Minimum expected R from the online model for a candidate to pass | `float` | `0.0` | >= -1, <= 5 | no |
+| `agent.observe_user_trades` | Opt in to read-only study of your own closed MT5 trades (never copied or shared) | `bool` | `False` | - | no |
+| `agent.user_trade_lookback_days` | How far back closed manual trades are read | `int` | `30` | >= 1, <= 3650 | no |

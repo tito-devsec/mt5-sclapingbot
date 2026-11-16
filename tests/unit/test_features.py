@@ -94,6 +94,9 @@ def test_warmup_rows_are_nan_and_match_registry(bars):
     for spec in feature_specs(CFG):
         if spec.name.startswith("htf_"):
             continue
+        if spec.family == "structure":  # swing-based features become valid when the first swings confirm
+            assert f[spec.name].first_valid_index() >= spec.warmup_bars, spec.name
+            continue
         assert f[spec.name].first_valid_index() == spec.warmup_bars, spec.name
 
 

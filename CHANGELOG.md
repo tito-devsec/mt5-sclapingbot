@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Learning agent (`selection.mode = "agent"`), documented in `docs/AGENT.md`:
+  - vector memory with PostgreSQL + pgvector (HNSW) and SQLite backends;
+  - time-aware retrieval of similar past episodes (RAG) and a cached playbook of validated skills (CAG);
+  - skill book with discovery, fresh-sample confirmation, retirement and re-evaluation;
+  - ten entry rules crossed with stop/target/hold profiles (120 technique variants);
+  - online model (river) updated after every outcome and used only while it beats the base rate;
+  - daily lessons with evidence; LangGraph learning cycle with a sequential fallback;
+  - opt-in, read-only study of the user's own closed MT5 trades.
+- Candlestick, swing-structure and trendline features (55 features in total); migration 0005.
+- `docs/SKILLS.md`: generated catalogue of implemented and planned capabilities.
+- Research decision labels (`BUY_CANDIDATE`, `SELL_CANDIDATE`, `NO_TRADE`, `UNCERTAIN`, `RISK_REJECTED`, `DATA_UNAVAILABLE`).
+- Aspirational daily profit goal for reporting (`risk.daily_profit_target_usd`); it never forces or sizes a trade.
+- `docker-compose.yml` for a local pgvector database; CI job testing the agent against a real pgvector service.
+
 ### Changed
 
 - CI and the release workflow install dependencies with `-c requirements-lock.txt`, so they test the exact pinned versions.

@@ -1,6 +1,6 @@
 # Feature reference
 
-Generated from `mt5bot.features.pipeline` (feature-set version 1.0.0, hash `58e2404ac187b778`). Regenerate with `mt5bot features docs`.
+Generated from `mt5bot.features.pipeline` (feature-set version 1.1.0, hash `69cb44accf949c07`). Regenerate with `mt5bot features docs`.
 
 Timing: a bar opening at *t* closes at *t + timeframe*; its features become available at that close. Higher-timeframe (`htf_*`) features come from the last higher-timeframe bar that had **closed** by then (M1→M5, M5→M15, M15→H1; H1 has none). Warm-up rows are NaN and are dropped before training.
 
@@ -45,6 +45,17 @@ Timing: a bar opening at *t* closes at *t + timeframe*; its features become avai
 | `in_london` | session | 1 if bar open hour in [7,16) UTC | 0 | time_utc |
 | `in_new_york` | session | 1 if bar open hour in [12,21) UTC | 0 | time_utc |
 | `session_open_30m` | session | 1 if any configured session opened within the last 30 minutes | 0 | time_utc |
+| `cs_bull_engulf` | candlestick | 1 if a bullish bar engulfs the previous bearish body | 1 | open, close |
+| `cs_bear_engulf` | candlestick | 1 if a bearish bar engulfs the previous bullish body | 1 | open, close |
+| `cs_pin_bull` | candlestick | 1 if lower wick >= 2x body and >= 60% of range | 0 | open, high, low, close |
+| `cs_pin_bear` | candlestick | 1 if upper wick >= 2x body and >= 60% of range | 0 | open, high, low, close |
+| `cs_doji` | candlestick | 1 if body <= 10% of range | 0 | open, high, low, close |
+| `cs_inside` | candlestick | 1 if the bar is inside the previous bar's range | 1 | high, low |
+| `sr_res_dist_atr` | structure | (last confirmed swing high - close)/ATR14; swings confirm 3 bars later | 14 | high, close |
+| `sr_sup_dist_atr` | structure | (close - last confirmed swing low)/ATR14; swings confirm 3 bars later | 14 | low, close |
+| `struct_trend` | structure | +1 higher swing high and low, -1 lower high and low, else 0 | 14 | high, low |
+| `tl_slope_atr` | structure | least-squares slope of the last 30 closes per bar / ATR14 | 29 | close |
+| `tl_dev_atr` | structure | (close - 30-bar trendline value)/ATR14 | 29 | close |
 | `htf_ema_20_50_atr` | cross_tf | higher-TF (EMA20-EMA50)/ATR14 of the last CLOSED higher bar | 49 | close |
 | `htf_rsi_14` | cross_tf | higher-TF RSI14 of the last closed higher bar | 14 | close |
 | `htf_adx_14` | cross_tf | higher-TF ADX14 of the last closed higher bar | 27 | close |

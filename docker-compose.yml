@@ -1,0 +1,15 @@
+# Optional: PostgreSQL 16 with pgvector for the agent's vector memory. Start with: docker compose up -d
+services:
+  pgvector:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mt5bot
+      POSTGRES_PASSWORD: ${MT5BOT_PG_PASSWORD:?set MT5BOT_PG_PASSWORD in your shell or .env first}
+      POSTGRES_DB: mt5bot
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - mt5bot_pgdata:/var/lib/postgresql/data
+volumes:
+  mt5bot_pgdata:
