@@ -301,6 +301,7 @@ def test_champion_model_can_only_filter_proven_skills(conn):
 
 
 def test_agent_mode_trains_lightgbm_on_technique_candidates(learned):
+    pytest.importorskip("lightgbm", reason="install the boost extra to train LightGBM")
     from mt5bot.ml.dataset import TECHNIQUE_CONTEXT, inference_frame, is_technique_model
     from mt5bot.pipeline.jobs import build_dataset, candidates_for, train_job
 
