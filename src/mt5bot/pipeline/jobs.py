@@ -28,6 +28,7 @@ from mt5bot.pipeline.inference import META_KIND, ResearchPipeline
 from mt5bot.regime.rules import classify_rules
 from mt5bot.storage.repositories import BacktestRepository, ExperimentRepository, ModelRepository, iso
 from mt5bot.strategies.specialists import build_strategies
+from mt5bot.strategies.techniques import TechniqueSet
 
 
 def code_version() -> str | None:
@@ -46,13 +47,19 @@ def code_version() -> str | None:
 
 
 def candidates_for(
-    settings: Settings, feats: pd.DataFrame, tf: Timeframe, strategies: list[str] | None = None
+    settings: Settings,
+    feats: pd.DataFrame,
+    tf: Timeframe,
+    strategies: list[str] | None = None,
+    techniques: bool = False,
 ) -> pd.DataFrame:
     regimes = classify_rules(feats)["regime"]
-    frames = [
-        s.candidates(feats, regimes, tf)
-        for s in build_strategies(strategies or list(settings.strategy.enabled), settings.strategy.max_hold_minutes)
-    ]
+    sources: list[Any] = (
+        [TechniqueSet(list(settings.agent.hold_minutes))]
+        if techniques
+        else build_strategies(strategies or list(settings.strategy.enabled), settings.strategy.max_hold_minutes)
+    )
+    frames = [s.candidates(feats, regimes, tf) for s in sources]
     frames = [f for f in frames if not f.empty]
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
@@ -72,7 +79,8 @@ def build_dataset(
         feats = pipe.feature_frame(sym, tf, start, end)
         if feats.empty:
             continue
-        cands = candidates_for(settings, feats, tf)
+        # Agent mode trains on the same technique candidates the agent decides on.
+        cands = candidates_for(settings, feats, tf, techniques=settings.selection.mode == "agent")
         if cands.empty:
             continue
         bars = pipe.bars.load(sym, tf, (feats["time_utc"].iloc[0]).to_pydatetime(), end)

@@ -20,6 +20,7 @@ from mt5bot.config.settings import Settings
 from mt5bot.core.types import Timeframe
 from mt5bot.memory.embed import STATE_DIM, HashingEmbedder, state_embedding
 from mt5bot.memory.vector import Hit, Item, VectorStore, open_vector_store
+from mt5bot.ml.training import FittedMetaModel
 from mt5bot.selection.context import session_name
 from mt5bot.selection.selector import SelectionResult
 from mt5bot.storage.db import transaction
@@ -292,6 +293,8 @@ class TradingAgent:
         at: datetime,
         data_ok: bool,
         suspended: set[str],
+        model: FittedMetaModel | None = None,
+        model_input: pd.DataFrame | None = None,
     ) -> SelectionResult:
         return select_with_agent(
             candidates,
@@ -309,6 +312,8 @@ class TradingAgent:
             learner=self.learner,
             agent=self.s.agent,
             memory=self.s.memory,
+            model=model,
+            model_input=model_input,
         )
 
     # -- inspection -------------------------------------------------------------

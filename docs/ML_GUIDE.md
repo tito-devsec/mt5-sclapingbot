@@ -26,6 +26,8 @@ Predicting price direction is deliberately not the target. A correct direction c
 6. Evaluate once on the test window.
 7. Run walk-forward folds (`evaluation.n_folds`) that repeat the whole procedure inside the pre-test data.
 
+**Where models live:** trained models are written to `models/` (see [models/README.md](../models/README.md)). In agent mode, `agent.use_champion_model` adds the champion as an extra filter (see [AGENT.md](AGENT.md)).
+
 **Model families:** `logreg`, `random_forest`, `lightgbm`, `xgboost` and `catboost`. All are seeded with `ml.random_seed` and use a single thread, so results are deterministic.
 
 **Optional training extras:**

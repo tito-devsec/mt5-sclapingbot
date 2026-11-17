@@ -53,7 +53,8 @@ config/local.toml
 *.bak
 
 # ---- Model artifacts ----
-models/
+models/*
+!models/README.md
 artifacts/
 mlruns/
 *.pkl

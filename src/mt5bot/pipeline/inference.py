@@ -22,7 +22,7 @@ from mt5bot.core.types import DecisionStatus, Direction, Regime, Timeframe
 from mt5bot.features.pipeline import HIGHER_TF, build_features, feature_set_hash
 from mt5bot.gateway.base import AccountSnapshot
 from mt5bot.memory.outcomes import context_bucket
-from mt5bot.ml.dataset import inference_frame
+from mt5bot.ml.dataset import inference_frame, is_technique_model
 from mt5bot.ml.registry import ModelRegistry
 from mt5bot.ml.training import FittedMetaModel
 from mt5bot.news.event_filter import EventRiskFilter
@@ -182,8 +182,12 @@ class ResearchPipeline:
         if not cands.empty:
             cands = cands[cands["time_utc"] == bar_time].reset_index(drop=True)
 
-        if self.s.selection.mode == "ml":
+        agent_mode = self.s.selection.mode == "agent"
+        if self.s.selection.mode == "ml" or (agent_mode and self.s.agent.use_champion_model):
             model_id, model, model_note = self.champion(decision_time, mode)
+            if model is not None and is_technique_model(model.feature_names) != agent_mode:
+                model_id, model = None, None
+                model_note = "champion was trained for a different selection mode; not used"
         else:
             model_id, model, model_note = None, None, f"{self.s.selection.mode}-based selection (no ML model used)"
         notes.append(model_note)
@@ -193,7 +197,7 @@ class ResearchPipeline:
                 model_input = inference_frame(feats.iloc[[row_idx]], cands, model.feature_names)
             except KeyError as exc:
                 model, model_id = None, None
-                notes.append(f"champion feature mismatch ({exc}); evidence-only baseline")
+                notes.append(f"champion feature mismatch ({exc}); model not used")
 
         feats_dict = {
             k: (None if isinstance(v, float) and math.isnan(v) else v)
@@ -227,6 +231,8 @@ class ResearchPipeline:
                 at=decision_time.to_pydatetime(),
                 data_ok=data_ok,
                 suspended=suspended,
+                model=model,
+                model_input=model_input,
             )
         else:
             result = select(

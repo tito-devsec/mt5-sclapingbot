@@ -123,5 +123,6 @@ Sources, highest priority first: environment variables `MT5BOT_<SECTION>__<KEY>`
 | `agent.online_min_samples` | Outcomes the online model must see before it can be trusted | `int` | `300` | >= 20 | no |
 | `agent.online_min_gain` | Log-loss improvement over the base rate the online model must hold to be trusted | `float` | `0.01` | >= 0, <= 1 | no |
 | `agent.online_min_expected_r` | Minimum expected R from the online model for a candidate to pass | `float` | `0.0` | >= -1, <= 5 | no |
+| `agent.use_champion_model` | - | `bool` | `False` | - | no |
 | `agent.observe_user_trades` | Opt in to read-only study of your own closed MT5 trades (never copied or shared) | `bool` | `False` | - | no |
 | `agent.user_trade_lookback_days` | How far back closed manual trades are read | `int` | `30` | >= 1, <= 3650 | no |

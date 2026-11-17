@@ -90,6 +90,7 @@ Configured for the JustMarkets **demo** account, the USD reference currency, EUR
 | Cost-aware backtesting | Implemented | `backtest/` | Next-bar fills, spread, slippage, commission, swap, cost sensitivity, Ljung-Box check. |
 | Walk-forward / purged validation | Implemented | `evaluation/`, `ml/training.py` | Untouched test window, purge and embargo, bootstrap, PSR and DSR. |
 | Local ML models | Implemented | `ml/` | logreg, random forest, LightGBM, XGBoost, CatBoost; calibration; conformal abstention. |
+| Model storage scaffold | Implemented | [`models/`](models/README.md) | Where trained models are saved, how they are promoted, and how each selection mode uses them. |
 | Model versioning and rollback | Implemented | `ml/registry.py` | skops artifacts, SHA-256, type allow-list, champion vs. challenger gates. |
 | Hyper-parameter tuning and SHAP | Implemented | `ml/tuning.py`, `ml/explain.py` | Validation folds only; every trial is counted. |
 | Rules-based selection (**current default**) | Implemented | `selection/selector.py` | `selection.mode = "rules"`: a rule-eligible candidate goes to the risk engine; memory vetoes proven losers. No ML model is used. |
@@ -351,7 +352,7 @@ In brief:
 
 | Check | Result |
 |---|---|
-| `python -m pytest -q` (Linux, Python 3.12.3) | **323 passed**, including pgvector tests against a real PostgreSQL. MT5 is faked; synthetic and fixture data only. |
+| `python -m pytest -q` (Linux, Python 3.12.3) | **326 passed**, including pgvector tests against a real PostgreSQL. MT5 is faked; synthetic and fixture data only. |
 | GitHub Actions CI (Windows + Ubuntu, Python 3.12) | **Passed** on commit `6d0b0c8`. It re-runs on every push. |
 | `ruff check` / `ruff format --check` / `mypy src` | clean |
 | Live RSS fetch (Fed, ECB, BoE) | fetched and parsed successfully |

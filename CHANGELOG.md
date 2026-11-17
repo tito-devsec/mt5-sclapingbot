@@ -20,7 +20,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `docs/SKILLS.md`: generated catalogue of implemented and planned capabilities.
 - Research decision labels (`BUY_CANDIDATE`, `SELL_CANDIDATE`, `NO_TRADE`, `UNCERTAIN`, `RISK_REJECTED`, `DATA_UNAVAILABLE`).
 - Aspirational daily profit goal for reporting (`risk.daily_profit_target_usd`); it never forces or sizes a trade.
+- Optional trained model in agent mode (`agent.use_champion_model`): the promoted champion (for example LightGBM) filters proven skills; training in agent mode uses the agent's technique candidates.
+- `models/README.md`: tracked guide to where trained models are stored and how they are trained, promoted and used.
 - `docker-compose.yml` for a local pgvector database; CI job testing the agent against a real pgvector service.
+
+### Fixed
+
+- Model scoring at decision time failed when a champion model existed, because of a duplicate column in the model input.
 
 ### Changed
 

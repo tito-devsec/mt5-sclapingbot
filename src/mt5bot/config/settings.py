@@ -246,6 +246,8 @@ class AgentSettings(_Strict):
     online_min_samples: int = Field(default=300, ge=20)
     online_min_gain: float = Field(default=0.01, ge=0, le=1)
     online_min_expected_r: float = Field(default=0.0, ge=-1, le=5)
+    # Extra filter from the promoted champion model (train it in agent mode); off until a model has earned it.
+    use_champion_model: bool = False
     # Read-only study of your own closed MT5 trades; off until you opt in. Nothing is ever shared or copied.
     observe_user_trades: bool = False
     user_trade_lookback_days: int = Field(default=30, ge=1, le=3650)

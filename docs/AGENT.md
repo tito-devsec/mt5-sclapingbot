@@ -105,6 +105,28 @@ The full list of what exists and what is only planned is in [SKILLS.md](SKILLS.m
 
 A logistic model (river) is updated after every outcome, test-first-then-train. It is used only while its log loss beats the base rate by `agent.online_min_gain`. A candidate is dropped when the model's expected value is negative: `p × reward/risk − (1 − p) < 0`. The model is rebuilt from stored episodes at start-up, so no pickled file is ever loaded.
 
+## Adding a trained model (LightGBM and others)
+
+The agent works without any trained model. When enough outcomes exist, you can add one as an extra filter:
+
+```powershell
+pip install -e ".[boost]"
+mt5bot train --symbols EURUSD --timeframe M5 --model lightgbm   # run with selection.mode = "agent"
+mt5bot models list
+```
+
+```toml
+[agent]
+use_champion_model = true
+```
+
+- In agent mode, training uses the same technique candidates the agent decides on. The model sees the market features plus the entry rule, reward/risk, stop size and holding time.
+- Only a model that passed every promotion gate (the **champion**) is used. A setup is dropped when the model's probability is below its threshold (`CHAMPION_BELOW_THRESHOLD`) or its conformal check is not confident (`CHAMPION_UNCERTAIN`).
+- The model can only reject. A setup still needs a proven skill first.
+- A model trained in another mode is refused, and in replays a model is never used on dates before its training ended.
+
+Model files live in [`models/`](../models/README.md).
+
 ## Goals and limits
 
 | Setting | Default | Behaviour |
@@ -147,5 +169,6 @@ The learning cycle runs as a LangGraph state graph when `langgraph` is installed
 | Structure features, techniques, embeddings, SQLite vector store, skill lifecycle, policy, lessons, playbook, learning cycle, CLI | Tested (`tests/unit/test_agent.py`) |
 | pgvector backend | Tested against a real PostgreSQL 16 + pgvector 0.6 locally, and in a dedicated CI job |
 | Full agent run on pgvector | Run locally on synthetic data (5,760 episodes, HNSW indexes) |
+| Champion model as an agent filter (LightGBM) | Tested on synthetic data: training, loading, scoring and the full decision path. No model trained on real data. |
 | Reading real MT5 deal history | **Not run.** Tested with a fake terminal only. |
 | Learning on real market data | **Not run.** No skill has been validated on real data, so no performance exists or is claimed. |

@@ -28,7 +28,7 @@ from mt5bot.memory.vector import Hit, Item, PgVectorStore, SqliteVectorStore, op
 from mt5bot.pipeline.inference import ResearchPipeline
 from mt5bot.risk.engine import RiskCandidate, RiskContext, RiskEngine
 from mt5bot.storage.db import open_database
-from mt5bot.storage.repositories import BarRepository
+from mt5bot.storage.repositories import BarRepository, ModelRepository
 from mt5bot.strategies.techniques import ENTRY_RULES, EXIT_SHAPES, TechniqueSet, entry_of
 from mt5bot.testing.synthetic import resample_bars, synthetic_bars
 
@@ -252,7 +252,7 @@ def _cands(**over):
     return pd.DataFrame([{**base, **over}])
 
 
-def _select(conn, cands, playbook, regime="RANGE", store=None, data_ok=True):
+def _select(conn, cands, playbook, regime="RANGE", store=None, data_ok=True, model=None):
     store = store or SqliteVectorStore(conn)
     feats = {"in_london": 1.0, "rsi_14": 30.0}
     return select_with_agent(
@@ -271,7 +271,72 @@ def _select(conn, cands, playbook, regime="RANGE", store=None, data_ok=True):
         learner=None,
         agent=AgentSettings(),
         memory=MemorySettings(),
+        model=model,
+        model_input=cands if model is not None else None,
     )
+
+
+class _Champion:
+    threshold = 0.55
+
+    def __init__(self, p, confident=True):
+        self.p, self.conformal = p, self
+        self.confident = confident
+
+    def predict_proba(self, X):
+        return np.full(len(X), self.p)
+
+    def confident_positive(self, p):
+        return np.full(len(p), self.confident)
+
+
+def test_champion_model_can_only_filter_proven_skills(conn):
+    proven = {"skills": {KEY.text: {"n": 80, "mean": 0.4, "lcb": 0.2}}}
+    ok = _select(conn, _cands(), proven, model=_Champion(0.7))
+    assert ok.status is DecisionStatus.RECOMMEND and ok.scores[0].probability == pytest.approx(0.7)
+    assert _select(conn, _cands(), proven, model=_Champion(0.5)).scores[0].reason == "CHAMPION_BELOW_THRESHOLD"
+    assert _select(conn, _cands(), proven, model=_Champion(0.7, False)).scores[0].reason == "CHAMPION_UNCERTAIN"
+    # a confident model never approves a setup without a proven skill
+    assert _select(conn, _cands(), {"skills": {}}, model=_Champion(0.99)).scores[0].reason == "SKILL_NOT_PROVEN"
+
+
+def test_agent_mode_trains_lightgbm_on_technique_candidates(learned):
+    from mt5bot.ml.dataset import TECHNIQUE_CONTEXT, inference_frame, is_technique_model
+    from mt5bot.pipeline.jobs import build_dataset, candidates_for, train_job
+
+    s, conn, pipe, end = learned["s"], learned["conn"], learned["pipe"], learned["end"].to_pydatetime()
+    ds = build_dataset(conn, s, ["EURUSD"], Timeframe.M1, None, end)
+    assert len(ds) > 200 and set(TECHNIQUE_CONTEXT) <= set(ds.feature_names) and is_technique_model(ds.feature_names)
+    assert not any(c.startswith("strat_") for c in ds.feature_names)
+    out = train_job(conn, s, ["EURUSD"], Timeframe.M1, None, end, model_type="lightgbm")
+    assert out.action in ("PROMOTE", "REJECT") and out.model_id
+    model = pipe.registry.load(out.model_id)
+    feats = pipe.feature_frame("EURUSD", Timeframe.M1, None, end)
+    cands = candidates_for(s, feats, Timeframe.M1, techniques=True)
+    t = cands["time_utc"].iloc[-1]
+    X = inference_frame(feats[feats["time_utc"] == t], cands[cands["time_utc"] == t], model.feature_names)
+    p = model.predict_proba(X)
+    assert len(p) == len(X) and ((p >= 0) & (p <= 1)).all()
+    # the full decision path runs with the model as an extra filter, and refuses a model from another mode
+    ModelRepository(conn).set_status(out.model_id, "CHAMPION")
+    conn.commit()
+    row_idx = int(feats.index[feats["time_utc"] == t][0])
+    now = t + pd.Timedelta(minutes=1)
+    with_model = ResearchPipeline(conn, s.model_copy(update={"agent": AgentSettings(use_champion_model=True)}))
+    rec = with_model.decide(feats, row_idx, "EURUSD", Timeframe.M1, mode="SIMULATED", decided_at=now)
+    assert rec.model_id == out.model_id and f"champion {out.model_id}" in rec.rationale
+    assert pipe.decide(feats, row_idx, "EURUSD", Timeframe.M1, mode="SIMULATED", decided_at=now).model_id is None
+    ml = s.model_copy(update={"selection": s.selection.model_copy(update={"mode": "ml"})})
+    other = ResearchPipeline(conn, ml).decide(feats, row_idx, "EURUSD", Timeframe.M1, mode="SIMULATED", decided_at=now)
+    assert other.model_id is None and "different selection mode" in other.rationale
+    ModelRepository(conn).set_status(out.model_id, "REJECTED")
+    conn.commit()
+
+
+def test_scaffold_guide_is_tracked_but_artifacts_are_ignored():
+    assert (ROOT / "models" / "README.md").exists()
+    ignore = (ROOT / ".gitignore").read_text()
+    assert "models/*" in ignore and "!models/README.md" in ignore
 
 
 def test_policy_abstains_until_a_skill_is_proven(conn):
