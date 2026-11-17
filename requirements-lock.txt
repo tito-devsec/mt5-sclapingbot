@@ -95,7 +95,7 @@ sortedcontainers==2.4.0
 SQLAlchemy==2.1.8
 statsmodels==0.15.0
 tenacity==9.2.1
-threadpoolctl==3.7.0
+threadpoolctl==3.8.0
 tqdm==4.70.1
 truststore==0.10.5
 typing-inspection==0.4.5
