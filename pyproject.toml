@@ -35,7 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 boost = ["lightgbm>=4.3,<5", "xgboost>=2.1,<4", "catboost>=1.2,<2"]
-regime = ["hmmlearn>=0.3,<1", "ruptures>=1.1,<2", "arch>=7,<9"]
+regime = ["hmmlearn>=0.3,<1", "ruptures>=1.1,<2", "arch>=7,<10"]
 online = ["river>=0.21,<1"]
 tuning = ["optuna>=4,<6"]
 explain = ["shap>=0.46,<1"]
