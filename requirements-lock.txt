@@ -3,7 +3,7 @@
 alembic==1.20.1
 annotated-types==0.8.0
 anyio==4.16.0
-arch==8.0.0
+arch==9.0.0
 ast_serialize==0.13.1
 catboost==1.2.10
 certifi==2026.10.23
